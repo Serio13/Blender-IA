@@ -36,6 +36,14 @@ mosaico y el asset solo tiene una capa, comprueba *Model → Geometry → Swap U
    esperada); un desplazamiento de UV sobre zona lisa ya no genera avisos. Un LOD que deforma se sube un 40 %
    (hasta 2 veces) y, si sigue mal, se descarta (`strict`, por defecto).
 
+## Aros plateados / madera con reflejos (Smoothness)
+
+Con un mapa Metallic+Smoothness, URP/Lit **multiplica** el smoothness del mapa por el slider **Smoothness** del
+material (por defecto 0,5). Con 1,0 todo brilla el doble: los aros salen plateados con reflejo del cielo y la
+madera pierde saturación. El script crea el material con 0,5 (constante `DefaultSmoothness` al inicio del
+archivo) y **no lo vuelve a tocar** después, para no pisar tus ajustes. Si ya tienes el material creado: ajusta
+el slider *Smoothness* a mano, o borra `Materials/M_<Asset>.mat` y haz *Reimport* de la carpeta.
+
 ## Script de importación (recomendado)
 
 Copia `unity/PropForge/Editor/PropForgePostprocessor.cs` a `Assets/Editor/` (crea la carpeta si no existe).
@@ -50,7 +58,7 @@ importaste texturas antes de instalarlo, haz clic derecho en la carpeta → *Rei
 |---|---|
 | `_BaseMap` | `Textures/<Asset>_BaseMap.png` |
 | `_BumpMap` | `Textures/<Asset>_Normal.png` (tipo *Normal map*) |
-| `_MetallicGlossMap` | `Textures/<Asset>_MetallicSmoothness.png` (*sRGB* desactivado; *Smoothness Source: Metallic Alpha*; Smoothness = 1) |
+| `_MetallicGlossMap` | `Textures/<Asset>_MetallicSmoothness.png` (*sRGB* desactivado; *Smoothness Source: Metallic Alpha*; slider *Smoothness* = 0.5, ver abajo) |
 | `_EmissionMap` | `Textures/<Asset>_Emission.png` |
 
 ## Por verificar con un asset real

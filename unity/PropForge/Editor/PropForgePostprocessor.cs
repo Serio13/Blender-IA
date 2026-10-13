@@ -20,6 +20,11 @@ namespace PropForge
     {
         const string ReportSuffix = "_report.json";
 
+        // Con un mapa Metallic+Smoothness, URP/Lit MULTIPLICA el smoothness del alfa por el slider "Smoothness".
+        // 0.5 es el valor por defecto de URP/Lit y el que suele usarse; con 1.0 los aros y la madera salen mas
+        // brillantes que en el original. Se aplica solo al CREAR el material: despues ajusta el slider a mano.
+        const float DefaultSmoothness = 0.5f;
+
         void OnPreprocessTexture()
         {
             var importer = (TextureImporter)assetImporter;
@@ -87,7 +92,8 @@ namespace PropForge
             if (!AssetDatabase.IsValidFolder(materialsFolder)) AssetDatabase.CreateFolder(dir, "Materials");
             string matPath = materialsFolder + "/M_" + asset + ".mat";
             Material mat = AssetDatabase.LoadAssetAtPath<Material>(matPath);
-            if (mat == null)
+            bool created = mat == null;
+            if (created)
             {
                 mat = new Material(shader);
                 AssetDatabase.CreateAsset(mat, matPath);
@@ -116,7 +122,7 @@ namespace PropForge
             if (metalSmooth != null)
             {
                 mat.SetTexture("_MetallicGlossMap", metalSmooth);
-                mat.SetFloat("_Smoothness", 1f);              // con mapa, URP multiplica el smoothness del alfa por este valor
+                if (created) mat.SetFloat("_Smoothness", DefaultSmoothness); // no pisa los ajustes manuales posteriores
                 mat.SetFloat("_SmoothnessTextureChannel", 0f); // 0 = alfa del mapa Metallic
                 mat.EnableKeyword("_METALLICSPECGLOSSMAP");
             }
