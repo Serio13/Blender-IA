@@ -8,7 +8,7 @@ def register(cls):
 
 
 def get(archetype):
-    from . import barrel  # noqa: F401  (registra los generadores al importar)
+    from . import barrel, chest, crate, key  # noqa: F401  (registra los generadores al importar)
     if archetype not in REGISTRY:
         raise KeyError(archetype)
     return REGISTRY[archetype]

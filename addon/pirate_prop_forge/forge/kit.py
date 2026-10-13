@@ -17,6 +17,8 @@ class Builder:
         self.uv = self.bm.loops.layers.uv.new("UVMap")
         self.isl = self.bm.faces.layers.int.new("pf_island")
         self.pid = self.bm.faces.layers.float.new("pf_id")
+        self.part_layer = self.bm.faces.layers.int.new("pf_part")
+        self.part = 0               # parte actual (0 = base, 1 = tapa...) para separar objetos tras hornear
         self.islands = []           # (ancho_m, alto_m)
         self.roles = []             # orden de slots de material
         self.rng = random.Random(seed)
@@ -43,6 +45,7 @@ class Builder:
         f.material_index = self.role_index(role)
         f[self.isl] = island
         f[self.pid] = pid
+        f[self.part_layer] = self.part
         f.smooth = smooth
         for loop, st in zip(f.loops, uvs):
             loop[self.uv].uv = st
@@ -115,7 +118,7 @@ class Builder:
         return isl
 
     # -- solidos pequenos ---------------------------------------------------------------------------
-    def box(self, center, size, role, rot_z=0.0, bevel=0.0, segments=2, pid=0.0, smooth=True):
+    def box(self, center, size, role, rot_z=0.0, bevel=0.0, segments=2, pid=0.0, smooth=True, rot=None):
         """Caja biselada con una unica isla UV (proyeccion de caja en metros)."""
         tmp = bmesh.new()
         bmesh.ops.create_cube(tmp, size=1.0)
@@ -125,6 +128,8 @@ class Builder:
             bmesh.ops.bevel(tmp, geom=tmp.edges[:], offset=min(bevel, min(size) * 0.45), segments=segments,
                             affect="EDGES")
         mat = Matrix.Translation(Vector(center)) @ Matrix.Rotation(rot_z, 4, "Z")
+        if rot is not None:
+            mat = mat @ rot
         return self._absorb(tmp, mat, role, (max(size) * 2, max(size) * 2), pid, smooth)
 
     def sphere(self, center, radius, role, u=10, v=6, scale=(1, 1, 1), pid=0.0, smooth=True):
@@ -143,26 +148,66 @@ class Builder:
         mat = Matrix.Translation(Vector(center)) @ (rot if rot is not None else Matrix.Identity(4))
         return self._absorb(tmp, mat, role, (radius * 4, radius * 4 + height), pid, smooth)
 
-    def _absorb(self, tmp, matrix, role, island_size, pid, smooth):
-        """Copia las caras de `tmp` a este constructor con proyeccion de caja como UV (metros)."""
-        isl = self.island(*island_size)
-        w, h = self.islands[isl]
-        mapping = {}
+    def _absorb(self, tmp, matrix, role, island_size, pid, smooth, single=None):
+        """Copia las caras de `tmp` a este constructor con proyeccion de caja como UV (metros).
+
+        Piezas grandes: una isla por direccion (6 como maximo) del tamano real proyectado. Piezas diminutas
+        (remaches...): una sola isla pequena para no inflar el numero de islas.
+        """
         tmp.normal_update()
-        for v in tmp.verts:
-            mapping[v] = self.vert(matrix @ v.co)
         rot = matrix.to_3x3()
+        pos = {v: matrix @ v.co for v in tmp.verts}
+        extent = max((max(p[a] for p in pos.values()) - min(p[a] for p in pos.values())) for a in range(3))
+        if single is None:
+            single = extent < 0.035
+        groups = {}
         for f in tmp.faces:
             n = rot @ f.normal
             axis = max(range(3), key=lambda a: abs(n[a]))
-            keep = [a for a in range(3) if a != axis]
-            uvs = []
-            for loop in f.loops:
-                p = matrix @ loop.vert.co
-                uvs.append(((p[keep[0]] * 1.0) % w, (p[keep[1]] * 1.0) % h))
-            self.face([mapping[v] for v in f.verts], uvs, role, isl, pid, smooth)
+            key = (0, 0) if single else (axis, 1 if n[axis] >= 0 else -1)
+            groups.setdefault(key, []).append((f, axis))
+        mapping = {v: self.vert(pos[v]) for v in tmp.verts}
+        for key, items in groups.items():
+            coords = []
+            for f, axis in items:
+                keep = [a for a in range(3) if a != axis]
+                coords.extend((pos[l.vert][keep[0]], pos[l.vert][keep[1]]) for l in f.loops)
+            u0, v0 = min(c[0] for c in coords), min(c[1] for c in coords)
+            w = max(max(c[0] for c in coords) - u0, 1e-4)
+            h = max(max(c[1] for c in coords) - v0, 1e-4)
+            if single:
+                w = h = max(w, h, 0.01)
+            isl = self.island(w, h)
+            for f, axis in items:
+                keep = [a for a in range(3) if a != axis]
+                uvs = [(pos[l.vert][keep[0]] - u0, pos[l.vert][keep[1]] - v0) for l in f.loops]
+                self.face([mapping[v] for v in f.verts], uvs, role, isl, pid, smooth)
         tmp.free()
-        return isl
+
+    def band_arc(self, center, radius, axis_range, theta, thickness, width, role, segments=24, pid=0.0, flip_axis=False):
+        """Fleje curvo en arco alrededor del eje X: seccion rectangular (grosor x ancho) siguiendo un arco.
+
+        center = (y, z) del centro del arco; axis_range = x central; theta = (t0, t1) en radianes (0 = +Y).
+        """
+        cx, cy, cz = axis_range, center[0], center[1]
+        t0, t1 = theta
+        hw = width / 2
+
+        def pt(u, dr, dx):
+            a = t0 + (t1 - t0) * u
+            r = radius + dr
+            return Vector((cx + dx, cy + r * sin(a), cz + r * cos(a)))
+
+        arc_len = abs(t1 - t0) * radius
+        ro, ri = thickness, 0.0
+        faces = (
+            (lambda u, v: pt(u, ro, -hw + width * v), (arc_len, width), False),      # exterior
+            (lambda u, v: pt(u, ri, -hw + width * v), (arc_len, width), True),       # interior
+            (lambda u, v: pt(u, ri + (ro - ri) * v, -hw), (arc_len, thickness), True),
+            (lambda u, v: pt(u, ri + (ro - ri) * v, hw), (arc_len, thickness), False),
+        )
+        for fn, size, flip in faces:
+            self.surface(fn, segments, 1, role, size, pid, flip=flip)
 
     # -- empaquetado y salida -----------------------------------------------------------------------
     def pack(self, margin=0.004):
