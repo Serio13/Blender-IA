@@ -1,0 +1,19 @@
+schema_version = "1.0.0"
+
+id = "pirate_prop_forge"
+version = "0.1.0"
+name = "Pirate Prop Forge"
+tagline = "LODs y paquete de exportacion para Unity de props estilizados"
+maintainer = "Serio13 <latinoscrewv@gmail.com>"
+type = "add-on"
+
+website = "https://github.com/Serio13/Blender-IA"
+
+blender_version_min = "4.2.0"
+
+license = [
+  "SPDX:GPL-3.0-or-later",
+]
+
+[permissions]
+files = "Exportar FBX, texturas y .blend a la carpeta elegida"
