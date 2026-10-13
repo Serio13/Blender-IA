@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Pirate Prop Forge",
     "author": "Serio13",
-    "version": (0, 1, 0),
+    "version": (0, 1, 1),
     "blender": (4, 2, 0),
     "location": "Vista 3D > Barra lateral (N) > Prop Forge",
     "description": "LODs y paquete de exportacion para Unity de props estilizados",

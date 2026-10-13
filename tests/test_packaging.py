@@ -29,3 +29,13 @@ def test_cli_runs_as_a_blender_script(chest, tmp_path, monkeypatch):
                                       "--out", str(tmp_path), "--dissolve-deg", "0"])
     runpy.run_path(str(ROOT / "addon" / "pirate_prop_forge" / "cli.py"), run_name="__main__")
     assert (tmp_path / "Cofre_test" / "Cofre_test.fbx").exists()
+
+
+def test_single_version_everywhere(tmp_path):
+    import importlib
+    version = importlib.import_module("pirate_prop_forge.core.version").VERSION
+    manifest = tomllib.loads((ROOT / "addon" / "pirate_prop_forge" / "blender_manifest.toml").read_text(encoding="utf-8"))
+    assert manifest["version"] == version
+    import pirate_prop_forge
+    assert ".".join(str(n) for n in pirate_prop_forge.bl_info["version"]) == version
+    assert build_extension.build(tmp_path).name == "pirate_prop_forge-%s.zip" % version

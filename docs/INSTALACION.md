@@ -2,7 +2,7 @@
 
 ## A. Solo instalar el add-on (lo mínimo)
 
-1. Abre en el navegador: `https://github.com/Serio13/Blender-IA/blob/claude/gifted-lamport-jkmw6u/releases/pirate_prop_forge-0.1.0.zip`
+1. Abre en el navegador: `https://github.com/Serio13/Blender-IA/blob/claude/gifted-lamport-jkmw6u/releases/pirate_prop_forge-0.1.1.zip`
    y pulsa **Download raw file** (icono ⬇). Se guarda en *Descargas*. **No lo descomprimas.**
 2. En Blender 5.2: *Edit → Preferences → Get Extensions*. Si pregunta por acceso a Internet, puedes decir
    que no: no hace falta.
@@ -48,3 +48,34 @@ y cambia a la rama claude/gifted-lamport-jkmw6u"*. Él ejecuta los comandos de g
   vista 3D al pulsar **N**.
 - **Mensaje de error:** aparece en rojo dentro del panel (recuadro de resultado). Cópialo y pásamelo.
 - **Más detalle:** *Window → Toggle System Console* (solo Windows) muestra los mensajes internos.
+
+
+## E. Actualizar el plugin (importante)
+
+`Pull` en GitHub Desktop **solo actualiza la carpeta del repositorio en tu PC; no cambia el plugin que ya
+tienes instalado en Blender**. Hay que reinstalarlo:
+
+1. En GitHub Desktop comprueba arriba que **Current Branch** es `claude/gifted-lamport-jkmw6u` (si pone `main`,
+   estás en la rama equivocada y no verás nada nuevo). Pulsa **Fetch origin** y luego **Pull origin**.
+2. En la carpeta del repositorio (por ejemplo `D:\Proyectos\Blender-IA`) abre `releases\` y localiza el `.zip`
+   con la versión más alta (ahora `pirate_prop_forge-0.1.1.zip`).
+3. Blender → *Edit → Preferences → Get Extensions* → busca **Pirate Prop Forge** → menú **▾** → **Remove**.
+4. Menú **▾** de arriba a la derecha → **Install from Disk…** → elige ese `.zip`.
+5. **Comprueba la versión:** en la vista 3D, **N → Prop Forge**: la primera línea dice `Version 0.1.1`.
+   Si pone otra, sigue instalada la antigua: repite el paso 3.
+6. Con objetos seleccionados, pulsa **Revisar seleccion**: te dice qué texturas reconoce el plugin de cada asset
+   (por ejemplo `BaseMap 2048, Normal 2048, Metallic 2048, Roughness 2048`). Si dice `SIN TEXTURAS` o `FALTA`,
+   el problema está en Blender, no en Unity: copia esa línea y envíamela.
+7. **Vuelve a exportar** los assets (los paquetes anteriores tienen el FBX antiguo).
+
+## F. Si en Unity no salen las texturas
+
+1. Comprueba que usaste la versión nueva (paso E) y que **volviste a exportar**.
+2. Copia a `Assets/` **la carpeta completa** del asset: debe contener `Textures/` junto al `.fbx`.
+3. En Unity selecciona el `.fbx` → *Inspector → pestaña Materials*. Deben verse `Material Creation Mode:
+   Import via MaterialDescription` y `Location: Use Embedded Materials`. Pulsa **Apply** si cambias algo.
+4. Si el material existe pero sale blanco: pulsa **Extract Materials…**, elige una carpeta, abre el material
+   creado y arrastra `…_BaseMap.png` a *Base Map* y `…_Normal.png` a *Normal Map* (Unity te ofrecerá
+   *Fix Now*; acepta).
+5. Para que se haga solo (incluido metal y brillo): instala `unity/PropForge/Editor/PropForgePostprocessor.cs`
+   en `Assets/Editor/` y haz clic derecho en la carpeta del asset → **Reimport**.

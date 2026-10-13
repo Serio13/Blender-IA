@@ -9,8 +9,8 @@ from mathutils import Matrix, Vector
 from . import colliders, lods, meshutil, naming, textures
 from .errors import PFError
 from .settings import COLLIDERS, LAYOUTS, PIVOTS
+from .version import VERSION
 
-VERSION = "0.1.0"
 LOD_SCREEN_HEIGHTS = (0.5, 0.2, 0.08, 0.03)
 
 

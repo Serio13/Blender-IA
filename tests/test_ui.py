@@ -84,3 +84,11 @@ def test_error_is_stored_too(registered):
     with pytest.raises(RuntimeError):
         bpy.ops.pf.lods()
     assert bpy.context.scene.pf.last_result.startswith("ERROR:")
+
+
+def test_check_operator_fills_the_panel_result(chest, registered):
+    base, lid, _ = chest
+    _select(base, lid)
+    assert bpy.ops.pf.check() == {"FINISHED"}
+    text = bpy.context.scene.pf.last_result
+    assert text.startswith("Prop Forge v") and "BaseMap" in text

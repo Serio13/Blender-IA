@@ -9,14 +9,16 @@ protección térmica llegan en fases posteriores (ver `docs/ARCHITECTURE.md`).
 
 ## Instalar (sin terminal)
 
-1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.0.zip` en la rama
+1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.1.zip` en la rama
    `claude/gifted-lamport-jkmw6u` (en GitHub: abre el archivo → botón *Download raw file* ⬇).
    No lo descomprimas.
 2. Blender → *Edit → Preferences → Get Extensions* → menú **▾** (arriba a la derecha) →
    **Install from Disk…** → elige el `.zip` → deja marcado *Enable*.
 3. En la vista 3D pulsa **N** → pestaña **Prop Forge**.
 
-Guía completa con GitHub Desktop y solución de problemas: `docs/INSTALACION.md`.
+**Actualizar:** `git pull` NO actualiza el plugin ya instalado en Blender; hay que quitarlo y reinstalar el
+`.zip` de `releases/`. La versión se ve en **N → Prop Forge** (primera línea). Guía completa con GitHub Desktop,
+actualización y solución de problemas: `docs/INSTALACION.md`.
 Para regenerar el instalador tras cambiar el código: `python tools/build_extension.py releases`.
 
 ## Qué hace con tus `_BAKED`

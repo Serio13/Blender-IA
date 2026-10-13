@@ -2,6 +2,8 @@ import textwrap
 
 import bpy
 
+from ..core.version import VERSION
+
 
 def draw_result(layout, text, width=42, max_lines=14):
     """Muestra el ultimo resultado dentro del panel (los avisos de la barra de estado desaparecen)."""
@@ -25,10 +27,13 @@ class PF_PT_main(bpy.types.Panel):
 
     def draw(self, context):
         pf = context.scene.pf
+        self.layout.label(text="Version %s" % VERSION)
         col = self.layout.column(align=True)
         col.prop(pf, "asset_name")
         col.prop(pf, "token_saver")
-        self.layout.operator("pf.profile", icon="INFO")
+        row = self.layout.row(align=True)
+        row.operator("pf.check", icon="VIEWZOOM")
+        row.operator("pf.profile", icon="INFO")
         if pf.last_result:
             draw_result(self.layout, pf.last_result)
 

@@ -66,3 +66,30 @@ def test_cli_drop_uv2(chest, tmp_path):
     cli.main(["lods", "--target", "*_BAKED", "--drop-uv2", "--dissolve-deg", "0"])
     lod = next(o for o in bpy.data.objects if o.get("pf_lod") == 1)
     assert len(lod.data.uv_layers) == 1
+
+
+def test_check_reports_recognised_textures(chest):
+    out = api.check("*_BAKED")
+    lines = out.splitlines()
+    assert lines[0].startswith("Prop Forge v")
+    assert "Cofre_test: 2 pieza(s), 14904 tris" in lines[1]
+    assert "BaseMap 64" in lines[1] and "Normal 64" in lines[1] and "Metallic 64" in lines[1]
+    assert "FALTA" not in lines[1]
+
+
+def test_check_flags_missing_and_unknown_textures():
+    mat = bpy.data.materials.new("TXB_Raro")
+    for name in ("TX_Raro_Metallic", "TX_Raro_Cosa"):
+        node = mat.node_tree.nodes.new("ShaderNodeTexImage")
+        node.image = helpers.make_image(name, 8, "metal")
+    helpers.make_detailed_box("Raro_malla_BAKED", cuts=2, material=mat)
+    line = api.check("Raro_malla_BAKED").splitlines()[1]
+    assert "FALTA: BaseMap, Normal" in line and "sin reconocer: TX_Raro_Cosa" in line
+    helpers.make_detailed_box("Nada_malla_BAKED", cuts=2)
+    assert "SIN TEXTURAS" in api.check("Nada_malla_BAKED")
+
+
+def test_check_via_cli_and_operator(chest, capsys):
+    assert cli.main(["check", "--target", "*_BAKED"]) == 0
+    assert "Prop Forge v" in capsys.readouterr().out
+    assert api.version() == __import__("pirate_prop_forge.core.version", fromlist=["VERSION"]).VERSION

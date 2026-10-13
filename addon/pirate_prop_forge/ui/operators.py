@@ -63,6 +63,16 @@ class PF_OT_export(_PFOperator):
                           collider=pf.collider, pivot=pf.pivot, verify=pf.verify, verbose=not pf.token_saver, **_common(pf))
 
 
+class PF_OT_check(_PFOperator):
+    bl_idname = "pf.check"
+    bl_label = "Revisar seleccion"
+    bl_description = "Muestra que texturas reconoce el plugin en los objetos seleccionados (no genera nada)"
+    bl_options = {"REGISTER"}
+
+    def run(self, context, pf):
+        return api.check(None, name=pf.asset_name or None)
+
+
 class PF_OT_profile(_PFOperator):
     bl_idname = "pf.profile"
     bl_label = "Perfil de estilo"
@@ -75,4 +85,4 @@ class PF_OT_profile(_PFOperator):
         return api.profile(out)
 
 
-classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_profile)
+classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile)

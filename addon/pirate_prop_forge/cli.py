@@ -69,6 +69,10 @@ def build_parser():
     sp.add_argument("--name")
     sp.add_argument("--save", action="store_true")
 
+    sp = sub.add_parser("check", help="version y texturas reconocidas de cada asset (no genera nada)")
+    sp.add_argument("--target")
+    sp.add_argument("--name")
+
     sp = sub.add_parser("profile", help="perfil de estilo compacto")
     sp.add_argument("--out", help="escribe el JSON aqui")
     return p
@@ -97,6 +101,8 @@ def run(argv):
                          **common_kw, **_kw(args))
     elif args.cmd == "clean":
         out = api.clean(args.target, name=args.name)
+    elif args.cmd == "check":
+        out = api.check(args.target, name=args.name)
     else:
         out = api.profile(args.out)
     if getattr(args, "save", False):

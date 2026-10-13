@@ -9,7 +9,8 @@ from pathlib import Path
 
 import bpy
 
-from .core import assets, export as core_export, lods as core_lods, profile as core_profile
+from .core import assets, export as core_export, lods as core_lods, meshutil, profile as core_profile, textures
+from .core.version import VERSION
 from .core.errors import PFError
 from .core.settings import lod_settings
 
@@ -84,3 +85,28 @@ def profile(out=None, ref_collection=core_profile.REF_COLLECTION, max_families=c
         path = core_profile.write_profile(prof, out)
         text += "\n-> %s (%d bytes)" % (path, Path(path).stat().st_size)
     return text
+
+
+def version():
+    """Version instalada del plugin."""
+    return VERSION
+
+
+def check(target=None, name=None):
+    """Que va a exportarse de cada asset (piezas, triangulos, texturas reconocidas) sin generar nada."""
+    lines = ["Prop Forge v%s" % VERSION]
+    for asset in assets.find_assets(target, name=name):
+        objs = [p.obj for p in asset.parts]
+        tris = sum(meshutil.tri_count(o.data) for o in objs)
+        images, unknown = textures.collect_images(objs)
+        tex = ", ".join(
+            ("%s %d" % (k, max(img.size))) if img.size[0] else ("%s VACIA" % k)
+            for k, img in sorted(images.items())) or "SIN TEXTURAS"
+        line = "%s: %d pieza(s), %d tris, texturas: %s" % (asset.name, len(asset.parts), tris, tex)
+        missing = [k for k in ("BaseMap", "Normal") if k not in images]
+        if images and missing:
+            line += " | FALTA: " + ", ".join(missing)
+        if unknown:
+            line += " | sin reconocer: " + ", ".join(sorted(set(unknown)))
+        lines.append(line)
+    return "\n".join(lines)
