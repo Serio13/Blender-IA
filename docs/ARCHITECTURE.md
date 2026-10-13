@@ -47,7 +47,10 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
 9. **Capas UV** (`meshutil.order_uv_layers`): Unity usa la primera capa del FBX; se pone primero la capa de las
    texturas (nodo UV Map si existe, si no la de render). Antes de la 0.1.2 se exportaba el orden original y los
    assets de dos capas salian en mosaico en Unity. `--drop-uv2` conserva esa capa, no la primera por azar.
-10. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
+10. Los LODs generados se crean **ocultos** (`hide_viewport`, `hide_render`) salvo con `spread`: nacen en el mismo
+    sitio que el original y visibles lo tapan con z-fighting. `tests/test_original_untouched.py` fija que ni
+    generar LODs ni exportar tocan el original (malla, UV, materiales, imagenes).
+11. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
    afecta a imágenes generadas, no a PNG empaquetados); se fija antes.
 
 ## Decisiones

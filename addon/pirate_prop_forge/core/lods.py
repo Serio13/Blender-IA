@@ -202,6 +202,10 @@ def _build_level(asset, shares, tris0, goal_total, candidate, offset, s, col, pi
         obj["pf_asset"] = asset.name
         obj["pf_offset"] = list(offset)
         obj["pf_generated"] = True
+        # Los LODs nacen en el mismo sitio que el original: visibles se pisarian con el (z-fighting, lineas y
+        # manchas sobre el modelo). Solo se ven si se piden separados (spread).
+        obj.hide_viewport = not s.spread
+        obj.hide_render = True
         col.objects.link(obj)
         objs.append(obj)
     return objs, quality.worst(checks)

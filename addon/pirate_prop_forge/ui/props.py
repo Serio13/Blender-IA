@@ -17,8 +17,9 @@ class PF_Settings(bpy.types.PropertyGroup):
                             description="Assets con menos triangulos no necesitan LODs")
     dissolve_deg: FloatProperty(name="Disolver planos (grados)", default=3.0, min=0.0, max=30.0)
     smooth_deg: FloatProperty(name="Suavizado (grados)", default=35.0, min=0.0, max=180.0)
-    spread: BoolProperty(name="Separar LODs en X", default=False,
-                         description="Solo para revisarlos en Blender; la exportacion los recoloca")
+    spread: BoolProperty(name="Mostrar LODs (separados en X)", default=False,
+                         description="Los LODs se ocultan por defecto para no taparse con el original. Marcalo para "
+                                     "verlos al lado y revisarlos; la exportacion los recoloca igualmente")
     keep_uv2: BoolProperty(name="Conservar UV adicionales", default=True)
     strict: BoolProperty(name="Descartar LODs que deformen", default=True,
                          description="Si un LOD cambia la forma o la textura, se sube su tamaño o se descarta")
