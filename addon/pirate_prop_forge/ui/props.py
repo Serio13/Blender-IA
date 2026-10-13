@@ -1,6 +1,7 @@
 import bpy
 from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty, StringProperty
 
+from ..core import postprocess
 from ..core.settings import PRESETS
 
 
@@ -42,6 +43,37 @@ class PF_Settings(bpy.types.PropertyGroup):
     last_result: StringProperty(name="Ultimo resultado", default="")
     token_saver: BoolProperty(name="Modo ahorro de tokens", default=True,
                               description="Respuestas minimas y sin informacion extra")
+
+    # ---- IA local
+    ai_image: StringProperty(name="Imagen", subtype="FILE_PATH", description="Foto o dibujo del objeto (fondo liso si es posible)")
+    ai_name: StringProperty(name="Nombre", default="Prop_ia_V2",
+                            description="Familia_variante_V2; la pieza se llama <Nombre>_malla_BAKED")
+    ai_backend: EnumProperty(name="Modelo", default="sf3d", items=[
+        ("sf3d", "Stable Fast 3D", "Malla con UV y texturas PBR. Licencia Stability Community (gratis comercial < 1 M USD/año)"),
+        ("triposr", "TripoSR", "Malla con color por vertice. Licencia MIT"),
+        ("fake", "Prueba (sin IA)", "Barril de prueba para comprobar el plugin; no usar en produccion")])
+    ai_category: EnumProperty(name="Categoria", default="barril",
+                              items=[(k, k.capitalize(), "%s m de alto" % v[0] if v[0] else "Sin escala automatica")
+                                     for k, v in postprocess.CATEGORIES.items()])
+    ai_height: FloatProperty(name="Alto real (m)", default=0.0, min=0.0, max=50.0, unit="LENGTH",
+                             description="0 = el de la categoria. Referencia: el pirata mide 1,62 m")
+    ai_pivot: EnumProperty(name="Origen", default="base", items=[
+        ("base", "Base", "Centro de la base en el origen"), ("center", "Centro", "Centro de la caja en el origen"),
+        ("keep", "Mantener", "Sin mover")])
+    ai_budget: EnumProperty(name="Triangulos", default="auto", items=[
+        ("auto", "Automatico", "Maximo segun la categoria"), ("manual", "Manual", "Minimo y maximo propios"),
+        ("off", "Sin limite", "No reducir")])
+    ai_min_tris: IntProperty(name="Minimo", default=300, min=0)
+    ai_max_tris: IntProperty(name="Maximo", default=5000, min=50)
+    ai_material: EnumProperty(name="Material", default="ia", items=[
+        ("ia", "Texturas de la IA", "Conserva color/normal/rugosidad que genera el modelo (o hornea el color por vertice)"),
+        ("madera", "Madera", "PBR procedural horneado"), ("cuero", "Cuero", "PBR procedural horneado"),
+        ("metal", "Metal", "PBR procedural horneado"), ("none", "Ninguno", "Sin material")])
+    ai_tex_size: EnumProperty(name="Textura", default="1024", items=[
+        (str(n), "%d px" % n, "") for n in (512, 1024, 2048)])
+    ai_use_color: BoolProperty(name="Color propio", default=False)
+    ai_color: bpy.props.FloatVectorProperty(name="Color", subtype="COLOR", size=3, min=0.0, max=1.0, default=(0.32, 0.19, 0.09))
+    ai_mesh: StringProperty(name="Malla", subtype="FILE_PATH", description=".obj / .glb / .gltf ya generado")
 
 
 classes = (PF_Settings,)

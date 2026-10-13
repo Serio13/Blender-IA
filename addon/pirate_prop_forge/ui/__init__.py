@@ -1,8 +1,8 @@
 import bpy
 
-from . import operators, panel, props
+from . import operators, panel, prefs, props
 
-_classes = props.classes + operators.classes + panel.classes
+_classes = prefs.classes + props.classes + operators.classes + panel.classes
 
 
 def register():

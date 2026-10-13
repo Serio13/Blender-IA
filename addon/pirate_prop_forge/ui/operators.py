@@ -1,7 +1,10 @@
 import bpy
 
 from .. import api
+from ..core import ai_session, postprocess
 from ..core.errors import PFError
+from ..shared import licenses
+from . import prefs as prefs_mod
 from ..core.settings import PRESETS
 
 
@@ -85,4 +88,99 @@ class PF_OT_profile(_PFOperator):
         return api.profile(out)
 
 
-classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile)
+# --------------------------------------------------------------------------------------------------------------
+# IA local
+# --------------------------------------------------------------------------------------------------------------
+def _ai_options(pf):
+    return postprocess.Options(
+        category=pf.ai_category, height=pf.ai_height, pivot=pf.ai_pivot, budget=pf.ai_budget, min_tris=pf.ai_min_tris,
+        max_tris=pf.ai_max_tris, material=pf.ai_material, tex_size=int(pf.ai_tex_size),
+        color=tuple(pf.ai_color) if pf.ai_use_color else None).validate()
+
+
+def _check_license(backend, prefs):
+    meta = licenses.get(backend)
+    if meta is None:
+        raise PFError("modelo desconocido: %s" % backend)
+    if prefs is not None and prefs.commercial_only and not meta["commercial_ok"]:
+        raise PFError("'%s' esta marcado como solo de prueba. Para usarlo desmarca 'Solo modelos aptos para uso "
+                      "comercial' en Preferencias (y no vendas lo generado)" % backend)
+
+
+class _AIOperator(bpy.types.Operator):
+    bl_options = {"REGISTER"}
+
+    def run(self, context, pf, prefs):
+        raise NotImplementedError
+
+    def execute(self, context):
+        pf = context.scene.pf
+        try:
+            self.run(context, pf, prefs_mod.get(context))
+        except PFError as exc:
+            ai_session.STATE.message = "ERROR: %s" % exc
+            self.report({"ERROR"}, str(exc))
+            return {"CANCELLED"}
+        return {"FINISHED"}
+
+
+class PF_OT_ai_start(_AIOperator):
+    bl_idname = "pf.ai_start"
+    bl_label = "Iniciar motor de IA"
+    bl_description = "Arranca el proceso de IA local (no bloquea Blender)"
+
+    def run(self, context, pf, prefs):
+        ai_session.start(python=prefs.worker_python if prefs else "", token=prefs.hf_token if prefs else "",
+                         policy=prefs.policy() if prefs else None)
+
+
+class PF_OT_ai_stop(_AIOperator):
+    bl_idname = "pf.ai_stop"
+    bl_label = "Apagar"
+    bl_description = "Cierra el motor de IA y libera la memoria de la GPU"
+
+    def run(self, context, pf, prefs):
+        ai_session.stop()
+
+
+class PF_OT_ai_generate(_AIOperator):
+    bl_idname = "pf.ai_generate"
+    bl_label = "Generar malla"
+    bl_description = "Genera la malla con IA local y la normaliza (escala real, origen, triangulos, material)"
+
+    def run(self, context, pf, prefs):
+        image = bpy.path.abspath(pf.ai_image)
+        _check_license(pf.ai_backend, prefs)
+        ai_session.generate(image, pf.ai_name, pf.ai_backend, _ai_options(pf),
+                            unload_after=bool(prefs and prefs.unload_after))
+
+
+class PF_OT_ai_cancel(_AIOperator):
+    bl_idname = "pf.ai_cancel"
+    bl_label = "Cancelar"
+
+    def run(self, context, pf, prefs):
+        ai_session.cancel()
+
+
+class PF_OT_ai_import(_AIOperator):
+    bl_idname = "pf.ai_import"
+    bl_label = "Normalizar malla existente"
+    bl_description = "Importa un .obj/.glb ya generado y le aplica limpieza, escala, origen, triangulos y material"
+    bl_options = {"REGISTER", "UNDO"}
+
+    def run(self, context, pf, prefs):
+        ai_session.import_existing(bpy.path.abspath(pf.ai_mesh), pf.ai_name, _ai_options(pf))
+
+
+class PF_OT_ai_doctor(_AIOperator):
+    bl_idname = "pf.ai_doctor"
+    bl_label = "Diagnosticar"
+    bl_description = "Comprueba GPU, PyTorch, modelos y permisos (tarda unos segundos)"
+
+    def run(self, context, pf, prefs):
+        ai_session.run_doctor(prefs.worker_python if prefs else "")
+
+
+classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile,
+           PF_OT_ai_start, PF_OT_ai_stop, PF_OT_ai_generate, PF_OT_ai_cancel, PF_OT_ai_import, PF_OT_ai_doctor)

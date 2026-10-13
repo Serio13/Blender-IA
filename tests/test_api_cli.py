@@ -93,3 +93,40 @@ def test_check_via_cli_and_operator(chest, capsys):
     assert cli.main(["check", "--target", "*_BAKED"]) == 0
     assert "Prop Forge v" in capsys.readouterr().out
     assert api.version() == __import__("pirate_prop_forge.core.version", fromlist=["VERSION"]).VERSION
+
+
+def test_ai_import_and_cli(tmp_path, monkeypatch):
+    from test_postprocess import fake_obj
+    from pirate_prop_forge import api, cli
+    raw = fake_obj(tmp_path)
+    line = api.ai_import(str(raw), "Barril_ia_V2", category="barril", material="none")
+    assert line.startswith("Barril_ia_V2_malla_BAKED:") and "alto 0.85 m" in line
+    out = cli.run(["ai-import", "--mesh", str(raw), "--name", "Cofre_ia_V2", "--category", "cofre", "--material", "none"])
+    assert out.startswith("Cofre_ia_V2_malla_BAKED:") and "alto 0.55 m" in out
+
+
+def test_ai_generate_blocks_test_models_unless_allowed(tmp_path):
+    from pirate_prop_forge import api
+    from pirate_prop_forge.core.errors import PFError
+    import pytest
+    with pytest.raises(PFError, match="comercial"):
+        api.ai_generate(str(tmp_path / "a.png"), "A", backend="fake")
+
+
+def test_ai_generate_batch_respects_cooldown(tmp_path, monkeypatch):
+    import sys
+    import time
+    from pirate_prop_forge import api
+    from pirate_prop_forge.core import ai_client
+    monkeypatch.setattr(ai_client, "find_python", lambda configured="": sys.executable)
+    imgs = []
+    for n in ("a", "b"):
+        p = tmp_path / (n + ".png")
+        p.write_bytes(b"x")
+        imgs.append(str(p))
+    t = time.time()
+    out = api.ai_generate(imgs, ["Barril_a_V2", "Barril_b_V2"], backend="fake", commercial_only=False, cooldown_seconds=5,
+                          category="barril", material="none")
+    lines = out.splitlines()
+    assert len(lines) == 2 and lines[1].startswith("Barril_b_V2_malla_BAKED")
+    assert time.time() - t >= 4.5                                   # la segunda espero la pausa de la GPU

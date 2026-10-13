@@ -1,9 +1,9 @@
 schema_version = "1.0.0"
 
 id = "pirate_prop_forge"
-version = "0.1.4"
+version = "0.2.0"
 name = "Pirate Prop Forge"
-tagline = "LODs y paquete de exportacion para Unity de props estilizados"
+tagline = "IA local (imagen a malla), normalizacion para Unity, materiales PBR, LODs y exportacion"
 maintainer = "Serio13 <latinoscrewv@gmail.com>"
 type = "add-on"
 
@@ -16,4 +16,4 @@ license = [
 ]
 
 [permissions]
-files = "Exportar FBX, texturas y .blend a la carpeta elegida"
+files = "Lee imagenes y mallas, exporta paquetes, lanza el motor de IA"

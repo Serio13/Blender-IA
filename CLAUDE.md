@@ -8,6 +8,8 @@
   ni leas informes grandes de la escena.
 - Si una línea trae `AVISO:` (calidad de LOD, texturas), repórtalo tal cual; no lo investigues con capturas.
 - **Varios assets en una llamada:** patrones (`"*_BAKED"`), no un comando por asset.
+- IA local: `pf.ai_generate(img, "Nombre_V2", category="barril", material="madera")` o `pf.ai_import(malla, nombre)`; 1 línea
+  por asset. Nunca llames a APIs de pago. La pausa térmica (≥5 s) la impone el worker; no la saltes.
 - Convenciones del proyecto: assets `Familia_variante_V2_pieza_BAKED`; piezas `base`/`tapa`/`malla`; un
   material horneado por pieza; texturas `TX_<asset>_<BaseColor|Normal|Metallic|Roughness|MetalSmooth|Emission>`;
   escala real en metros (el pirata de referencia mide 1,62 m); colisiones se hacen en Unity.

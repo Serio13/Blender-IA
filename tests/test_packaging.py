@@ -39,3 +39,21 @@ def test_single_version_everywhere(tmp_path):
     import pirate_prop_forge
     assert ".".join(str(n) for n in pirate_prop_forge.bl_info["version"]) == version
     assert build_extension.build(tmp_path).name == "pirate_prop_forge-%s.zip" % version
+
+
+def test_zip_ships_the_worker_and_it_runs_from_the_packaged_layout(tmp_path):
+    import subprocess
+    target = build_extension.build(tmp_path)
+    with zipfile.ZipFile(target) as zf:
+        names = set(zf.namelist())
+        for needed in ("worker/worker_main.py", "worker/doctor.py", "worker/install_ia.ps1", "worker/instalar_ia.bat",
+                       "worker/backends/sf3d.py", "worker/backends/fake.py", "shared/cooldown.py", "shared/protocol.py",
+                       "shared/licenses.py"):
+            assert needed in names, needed
+        dest = tmp_path / "ext" / "pirate_prop_forge"
+        zf.extractall(dest)
+    out = subprocess.run([sys.executable, str(dest / "worker" / "worker_main.py")], input='{"id":1,"cmd":"hello"}\n{"cmd":"shutdown"}\n',
+                         capture_output=True, text=True, timeout=30)
+    assert '"event":"ready"' in out.stdout, out.stderr
+    doc = subprocess.run([sys.executable, str(dest / "worker" / "doctor.py")], capture_output=True, text=True, timeout=60)
+    assert "VEREDICTO" in doc.stdout

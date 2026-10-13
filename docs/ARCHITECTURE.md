@@ -13,8 +13,11 @@ addon/pirate_prop_forge/
   blender_manifest.toml   extensión de Blender (4.2+; probado en 5.2.2)
   api.py                  comandos cortos: lods / export / clean / profile
   cli.py                  blender -b archivo.blend --python cli.py -- <comando>
-  core/                   lógica sin UI (assets, lods, textures, colliders, export, profile)
-  ui/                     panel N, propiedades, operadores (delgados: llaman a api)
+  core/                   lógica sin UI (assets, lods, textures, colliders, export, profile,
+                          postprocess, pbr, ai_client, ai_session)
+  ui/                     panel N, propiedades, preferencias, operadores (delgados)
+  shared/                 sin bpy: cooldown, protocolo, licencias (los cargan plugin y worker)
+  worker/                 proceso de IA (worker_main, backends, doctor, instalador de Windows)
 tests/                    pytest con bpy real
 tools/export_style_report.py   informe completo de la escena (uso puntual; pesado)
 ```
@@ -57,7 +60,7 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
 
 | Tema | Decisión |
 |---|---|
-| Motor de IA | Fase posterior. Receta/generador paramétrico + spec JSON; SF3D (6 GB) solo como extra para orgánicos. TRELLIS descartado en 11 GB |
+| Motor de IA | Local: SF3D (principal, UV+PBR) y TripoSR (MIT) en un proceso *worker* aparte (`worker/`, protocolo JSON en `shared/protocol.py`). TRELLIS descartado en 11 GB. Ver `docs/IA_LOCAL.md` |
 | PyTorch en GTX 1080 Ti | Pascal: ruedas cu126 o anteriores (≤ PyTorch 2.14), FP32, sin flash-attn |
 | Texturas | Metallic+Roughness → `MetallicSmoothness` (R=metal, A=1−roughness), propiedades URP/Lit |
 | Colisiones | Se hacen en Unity. Opcional: datos sugeridos (`hint`) o malla `_COL` |
@@ -71,4 +74,4 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
 | 1b | Rehorneado de normales/UV desde LOD0 (plan B si el control de calidad avisa de que Decimate deforma) | pendiente |
 | 2 | Automatizar horneado V2 → BAKED; generadores paramétricos (cofre, barril, llave) y spec JSON | pendiente |
 | 3 | Resolutor de intención (texto/imagen/ejemplo) con proveedores intercambiables (locales y APIs) | pendiente |
-| 4 | Worker de IA local con cooldown térmico (GPU), SF3D opcional, modo comercial seguro de licencias | pendiente |
+| 4 | Worker de IA local (SF3D/TripoSR) con cooldown térmico, normalización, PBR, modo comercial seguro | **hecha en código y pruebas con modelo falso (0.2.0); falta validar la inferencia real en la GPU** |

@@ -9,7 +9,9 @@ from pathlib import Path
 
 import bpy
 
-from .core import assets, export as core_export, lods as core_lods, meshutil, profile as core_profile, textures
+from .core import (ai_client, assets, export as core_export, lods as core_lods, meshutil, postprocess,
+                   profile as core_profile, textures)
+from .shared import cooldown as _cooldown, licenses as _licenses
 from .core.version import VERSION
 from .core.errors import PFError
 from .core.settings import lod_settings
@@ -117,4 +119,66 @@ def check(target=None, name=None):
         if unknown:
             line += " | sin reconocer: " + ", ".join(sorted(set(unknown)))
         lines.append(line)
+    return "\n".join(lines)
+
+
+_AI_KEYS = ("category", "height", "pivot", "budget", "min_tris", "max_tris", "material", "tex_size", "color")
+
+
+def ai_import(path, name, **kw):
+    """Normaliza una malla ya generada (.obj/.glb): limpieza, escala real, origen, triangulos y material PBR.
+
+        pf.ai_import("D:/ia/barril.glb", "Barril_ia_V2", category="barril", material="madera")
+    """
+    obj, rep = postprocess.process(path, name, postprocess.Options(**{k: kw.pop(k) for k in _AI_KEYS if k in kw}))
+    if kw:
+        raise PFError("argumentos desconocidos: %s" % ", ".join(kw))
+    return postprocess.summary(rep)
+
+
+def ai_generate(images, names=None, backend="sf3d", python="", cooldown_seconds=10.0, commercial_only=True,
+                timeout=900.0, params=None, **kw):
+    """Genera con IA local (bloquea hasta terminar; pensado para scripts/Claude Code, no para la interfaz).
+
+    `images`: ruta o lista; con varias se generan una tras otra respetando la pausa de enfriamiento.
+    """
+    import time
+    if commercial_only and not _licenses.commercial_ok(backend):
+        raise PFError("'%s' no esta marcado como apto para uso comercial (commercial_only=False para pruebas)" % backend)
+    images = [images] if isinstance(images, str) else list(images)
+    names = [names] if isinstance(names, str) else list(names or [])
+    if len(names) != len(images):
+        names = [Path(i).stem for i in images] if not names else names
+    if len(names) != len(images):
+        raise PFError("hace falta un nombre por imagen")
+    opts = postprocess.Options(**{k: kw.pop(k) for k in _AI_KEYS if k in kw}).validate()
+    if kw:
+        raise PFError("argumentos desconocidos: %s" % ", ".join(kw))
+    import tempfile
+    out_dir = tempfile.mkdtemp(prefix="pf_ai_")
+    cli = ai_client.AIClient(ai_client.find_python(python), backend=backend)
+    lines = []
+    try:
+        cli.start()
+        cli.hello({"min_seconds": cooldown_seconds})
+        ready, _ = cli.wait_for("ready", timeout=120)
+        state = ready["backends"].get(backend, {})
+        if not state.get("available"):
+            raise PFError("modelo '%s' no disponible: %s" % (backend, state.get("reason", "?")))
+        for image, name in zip(images, names):
+            while True:
+                cli.generate(image, out_dir, name, backend)
+                ev, _ = cli.wait_for_any(("result", "error"), timeout=timeout)
+                if ev["event"] == "result":
+                    break
+                if ev.get("code") in ("cooldown", "overheated"):
+                    time.sleep(max(1.0, float(ev.get("remaining", 5.0))))
+                    continue
+                raise PFError("%s: %s" % (name, ev.get("message", ev.get("code"))))
+            obj, rep = postprocess.process(ev["mesh"], name, opts)
+            meta = _licenses.get(backend) or {}
+            obj["pf_source"], obj["pf_license"], obj["pf_commercial_ok"] = backend, meta.get("license", ""), bool(meta.get("commercial_ok"))
+            lines.append("%s (%s, %.0f s)" % (postprocess.summary(rep), backend, ev.get("seconds", 0)))
+    finally:
+        cli.stop()
     return "\n".join(lines)

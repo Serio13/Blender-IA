@@ -4,12 +4,14 @@ Add-on de Blender (5.x) para llevar props estilizados a Unity: **LODs automátic
 **paquete de exportación** (FBX + `.blend` + texturas PNG + informe), con comandos cortos pensados para
 gastar pocos tokens al usarlo desde Claude Code.
 
-Estado: **Fase 1** (LODs + exportación + perfil de estilo). Generación con IA, horneado automático y
-protección térmica llegan en fases posteriores (ver `docs/ARCHITECTURE.md`).
+Estado: **0.2.0**. Además de LODs/exportación, incluye **generación local con IA** (imagen → malla con Stable
+Fast 3D / TripoSR en tu GPU, sin tokens de pago), normalización (limpieza, escala real, origen, límite de
+triángulos), materiales PBR (madera/cuero/metal horneados) y pausa térmica obligatoria. Guía: `docs/IA_LOCAL.md`.
+La parte de IA se probó con un modelo de prueba; la inferencia real en tu GPU está por verificar (ver esa guía).
 
 ## Instalar (sin terminal)
 
-1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.4.zip` en la rama
+1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.2.0.zip` en la rama
    `claude/gifted-lamport-jkmw6u` (en GitHub: abre el archivo → botón *Download raw file* ⬇).
    No lo descomprimas.
 2. Blender → *Edit → Preferences → Get Extensions* → menú **▾** (arriba a la derecha) →

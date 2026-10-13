@@ -75,6 +75,30 @@ def build_parser():
     sp.add_argument("--target")
     sp.add_argument("--name")
 
+    def ai_common(sp):
+        sp.add_argument("--category", default="personalizado")
+        sp.add_argument("--height", type=float, default=0.0, help="alto real en metros (0 = el de la categoria)")
+        sp.add_argument("--pivot", default="base", choices=("base", "center", "keep"))
+        sp.add_argument("--budget", default="auto", choices=("auto", "manual", "off"))
+        sp.add_argument("--min-tris", type=int, default=0)
+        sp.add_argument("--max-tris", type=int, default=0)
+        sp.add_argument("--material", default="ia", choices=("ia", "madera", "cuero", "metal", "none"))
+        sp.add_argument("--tex-size", type=int, default=1024)
+
+    sp = sub.add_parser("ai-import", help="normaliza una malla .obj/.glb ya generada")
+    sp.add_argument("--mesh", required=True)
+    sp.add_argument("--name", required=True)
+    ai_common(sp)
+
+    sp = sub.add_parser("ai-generate", help="genera con IA local (una o varias imagenes) y normaliza")
+    sp.add_argument("--image", nargs="+", required=True)
+    sp.add_argument("--name", nargs="*")
+    sp.add_argument("--backend", default="sf3d")
+    sp.add_argument("--python", default="")
+    sp.add_argument("--cooldown", type=float, default=10.0)
+    sp.add_argument("--allow-test-models", action="store_true", help="permite modelos no aptos para uso comercial")
+    ai_common(sp)
+
     sp = sub.add_parser("profile", help="perfil de estilo compacto")
     sp.add_argument("--out", help="escribe el JSON aqui")
     return p
@@ -107,6 +131,14 @@ def run(argv):
         out = api.clean(args.target, name=args.name)
     elif args.cmd == "check":
         out = api.check(args.target, name=args.name)
+    elif args.cmd in ("ai-import", "ai-generate"):
+        ai = dict(category=args.category, height=args.height, pivot=args.pivot, budget=args.budget, min_tris=args.min_tris,
+                  max_tris=args.max_tris, material=args.material, tex_size=args.tex_size)
+        if args.cmd == "ai-import":
+            out = api.ai_import(args.mesh, args.name, **ai)
+        else:
+            out = api.ai_generate(args.image, args.name, backend=args.backend, python=args.python, cooldown_seconds=args.cooldown,
+                                  commercial_only=not args.allow_test_models, **ai)
     else:
         out = api.profile(args.out)
     if getattr(args, "save", False):
