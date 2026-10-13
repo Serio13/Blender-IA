@@ -2,7 +2,7 @@ import textwrap
 
 import bpy
 
-from ..core import ai_session
+from ..core import ai_client, ai_session
 from ..core.version import VERSION
 from ..shared import licenses
 from . import prefs as prefs_mod
@@ -98,6 +98,13 @@ class PF_PT_ai(bpy.types.Panel):
     def draw(self, context):
         pf, st, lay = context.scene.pf, ai_session.STATE, self.layout
         running = st.client is not None and st.client.alive()
+        prefs = prefs_mod.get(context)
+        if not running and not ai_client.find_python(prefs.worker_python if prefs else ""):
+            box = lay.box()
+            box.label(text="Motor de IA no instalado", icon="ERROR")
+            draw_result(box, "1) Abre la carpeta del instalador.\n2) Doble clic en instalar_ia.bat (20-30 min, una vez).\n"
+                             "3) Vuelve a Blender y pulsa Iniciar.")
+            box.operator("pf.ai_open_installer", icon="FILE_FOLDER")
         row = lay.row(align=True)
         if running:
             row.label(text={"starting": "Arrancando...", "generating": "Generando", "postprocess": "Normalizando",
@@ -115,7 +122,6 @@ class PF_PT_ai(bpy.types.Panel):
         col.prop(pf, "ai_name")
         col.prop(pf, "ai_backend")
         meta = licenses.get(pf.ai_backend)
-        prefs = prefs_mod.get(context)
         if meta:
             blocked = prefs is not None and prefs.commercial_only and not meta["commercial_ok"]
             col.label(text="Licencia: %s" % meta["license"], icon="ERROR" if blocked else "CHECKMARK")

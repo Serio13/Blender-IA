@@ -182,5 +182,16 @@ class PF_OT_ai_doctor(_AIOperator):
         ai_session.run_doctor(prefs.worker_python if prefs else "")
 
 
-classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile,
+class PF_OT_ai_open_installer(_AIOperator):
+    bl_idname = "pf.ai_open_installer"
+    bl_label = "Abrir carpeta del instalador"
+    bl_description = "Abre la carpeta que contiene instalar_ia.bat; haz doble clic en ese archivo"
+
+    def run(self, context, pf, prefs):
+        from pathlib import Path
+        folder = Path(__file__).resolve().parent.parent / "worker"
+        bpy.ops.wm.path_open(filepath=str(folder))
+
+
+classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile, PF_OT_ai_open_installer,
            PF_OT_ai_start, PF_OT_ai_stop, PF_OT_ai_generate, PF_OT_ai_cancel, PF_OT_ai_import, PF_OT_ai_doctor)

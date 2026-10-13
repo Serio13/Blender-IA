@@ -121,3 +121,16 @@ def test_policy_is_clamped_by_worker_not_by_ui():
     p = prefs_mod.PF_Preferences
     assert p.__annotations__["cooldown_seconds"].keywords["min"] == 5.0
     assert p.__annotations__["cooldown_seconds"].keywords["max"] == 15.0
+
+
+def test_panel_guides_to_installer_when_no_python(monkeypatch):
+    monkeypatch.setattr(ai_client, "find_python", lambda configured="": "")
+    ai_session.reset_state()
+    pf.register()
+    try:
+        log = draw(bpy.context)
+        assert any(c[0] == "label" and "no instalado" in c[2].get("text", "") for c in log)
+        assert any(c[0] == "operator" and c[1][0] == "pf.ai_open_installer" for c in log)
+        assert hasattr(bpy.ops.pf, "ai_open_installer")
+    finally:
+        pf.unregister()
