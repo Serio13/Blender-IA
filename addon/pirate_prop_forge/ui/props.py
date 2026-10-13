@@ -20,6 +20,8 @@ class PF_Settings(bpy.types.PropertyGroup):
     spread: BoolProperty(name="Separar LODs en X", default=False,
                          description="Solo para revisarlos en Blender; la exportacion los recoloca")
     keep_uv2: BoolProperty(name="Conservar UV adicionales", default=True)
+    strict: BoolProperty(name="Descartar LODs que deformen", default=True,
+                         description="Si un LOD cambia la forma o la textura, se sube su tamaño o se descarta")
 
     out_dir: StringProperty(name="Carpeta", subtype="DIR_PATH", default="//Export/")
     export_fbx: BoolProperty(name="FBX", default=True)

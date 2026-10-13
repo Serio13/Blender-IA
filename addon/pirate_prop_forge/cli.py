@@ -46,6 +46,8 @@ def build_parser():
         sp.add_argument("--smooth-deg", type=float, dest="smooth_deg")
         sp.add_argument("--spread", action="store_true", default=None)
         sp.add_argument("--drop-uv2", action="store_true", help="descarta capas UV adicionales")
+        sp.add_argument("--no-strict", action="store_true",
+                        help="conserva los LODs aunque deformen (por defecto se suben o descartan)")
         sp.add_argument("-v", "--verbose", action="store_true")
 
     sp = sub.add_parser("lods", help="genera LOD1..N en la escena")
@@ -83,6 +85,8 @@ def _kw(args):
           if getattr(args, k, None) is not None}
     if getattr(args, "drop_uv2", False):
         kw["keep_uv2"] = False
+    if getattr(args, "no_strict", False):
+        kw["strict"] = False
     return kw
 
 

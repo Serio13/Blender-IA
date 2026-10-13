@@ -27,6 +27,15 @@ mosaico. Desde la 0.1.2 el plugin reordena las capas al exportar (primero la de 
 nodo UV Map del material). `Revisar seleccion` muestra las capas y marca con `*` la de las texturas. Si hay
 mosaico y el asset solo tiene una capa, comprueba *Model → Geometry → Swap UVs* en Unity.
 
+## Se ve distinto del original
+
+1. **LOD Group → pulsa LOD 0** para ver el modelo completo: lo habitual es estar viendo un LOD inferior.
+2. **`…_Normal.png` debe ser *Texture Type: Normal map*.** Si no, salen tablas grises y ruido.
+3. Sin `_MetallicSmoothness` el material queda mate: usa el script de abajo o asígnalo a mano.
+4. Desde la 0.1.3 el control de calidad mide el **color visible** (lee la textura con la UV del LOD y con la
+   esperada); un desplazamiento de UV sobre zona lisa ya no genera avisos. Un LOD que deforma se sube un 40 %
+   (hasta 2 veces) y, si sigue mal, se descarta (`strict`, por defecto).
+
 ## Script de importación (recomendado)
 
 Copia `unity/PropForge/Editor/PropForgePostprocessor.cs` a `Assets/Editor/` (crea la carpeta si no existe).

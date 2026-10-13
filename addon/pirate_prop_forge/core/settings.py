@@ -25,6 +25,7 @@ class LodSettings:
     smooth_deg: float = 35.0      # angulo de sombreado suave en los LODs
     spread: bool = False          # separar los LODs en X para revisarlos en Blender
     keep_uv2: bool = True         # conservar capas UV adicionales
+    strict: bool = True           # sube o descarta los LODs que deformen la forma o la textura
 
 
 def lod_settings(preset="estandar", ratios=None, tris=None, **kw):

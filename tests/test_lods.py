@@ -3,8 +3,9 @@ import pytest
 
 import helpers
 from pirate_prop_forge.core import assets, lods, meshutil
-from pirate_prop_forge.core.settings import lod_settings
+from helpers import lod_settings
 from pirate_prop_forge.core.errors import PFError
+from pirate_prop_forge.core.settings import lod_settings as real_lod_settings
 
 
 def _asset(*objs):
@@ -119,6 +120,6 @@ def test_flat_shading_is_inherited():
 
 def test_invalid_settings():
     with pytest.raises(PFError):
-        lod_settings("nope")
+        real_lod_settings("nope")
     with pytest.raises(PFError):
-        lod_settings(ratios=(1.5,))
+        real_lod_settings(ratios=(1.5,))

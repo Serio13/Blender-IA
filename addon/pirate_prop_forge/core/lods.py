@@ -14,6 +14,8 @@ MIN_PART_TRIS = 8      # una pieza no baja de aqui
 COPY_BELOW = 12        # piezas diminutas se copian sin decimar
 TOLERANCE = 0.08       # error relativo aceptado sobre el objetivo de una pieza
 REDUCTION_GAIN = 0.85  # un LOD debe quedar por debajo de esta fraccion del anterior
+MAX_RETRIES = 2        # reintentos con mas triangulos si un LOD deforma
+RETRY_FACTOR = 1.4     # cuanto sube el objetivo en cada reintento
 
 
 @dataclass
@@ -172,6 +174,39 @@ def _level_targets(total0, s):
     return kept, notes
 
 
+def _discard(objs):
+    for obj in objs:
+        mesh = obj.data
+        bpy.data.objects.remove(obj)
+        if mesh.users == 0:
+            bpy.data.meshes.remove(mesh)
+
+
+def _build_level(asset, shares, tris0, goal_total, candidate, offset, s, col, pixels):
+    """Crea los objetos de un nivel de LOD. Devuelve (objetos, calidad agregada)."""
+    objs, checks = [], []
+    for part, part_tris in shares:
+        if part_tris <= COPY_BELOW:
+            goal = part_tris
+        else:
+            goal = max(MIN_PART_TRIS, round(goal_total * part_tris / tris0))
+        mesh = make_lod_mesh(part.obj, goal, s)
+        checks.append(quality.compare(part.obj.data, mesh, textures.render_uv_name([part.obj]),
+                                      pixels.get(part.obj.name)))
+        stem = naming.strip_baked(part.obj.name)
+        mesh.name = "%s_LOD%d" % (stem, candidate)
+        obj = bpy.data.objects.new(mesh.name, mesh)
+        obj.matrix_world = Matrix.Translation(offset) @ part.obj.matrix_world
+        obj["pf_lod"] = candidate
+        obj["pf_source"] = part.obj.name
+        obj["pf_asset"] = asset.name
+        obj["pf_offset"] = list(offset)
+        obj["pf_generated"] = True
+        col.objects.link(obj)
+        objs.append(obj)
+    return objs, quality.worst(checks)
+
+
 def generate_lods(asset, s):
     clear_lods(asset)
     originals = [p.obj for p in asset.parts]
@@ -190,43 +225,43 @@ def generate_lods(asset, s):
     width = float(hi[0] - lo[0])
     col = _lods_collection()
     shares = [(p, meshutil.tri_count(p.obj.data)) for p in asset.parts]
+    pixels = {p.obj.name: quality.load_basemap(p.obj) for p in asset.parts}
 
     level = 0
     for tgt_total in targets:
         candidate = level + 1
         offset = Vector((candidate * width * 1.25, 0.0, 0.0)) if s.spread else Vector()
-        objs, checks = [], []
-        for part, part_tris in shares:
-            if part_tris <= COPY_BELOW:
-                goal = part_tris
-            else:
-                goal = max(MIN_PART_TRIS, round(tgt_total * part_tris / tris0))
-            mesh = make_lod_mesh(part.obj, goal, s)
-            checks.append(quality.compare(part.obj.data, mesh, textures.render_uv_name([part.obj])))
-            stem = naming.strip_baked(part.obj.name)
-            mesh.name = "%s_LOD%d" % (stem, candidate)
-            obj = bpy.data.objects.new(mesh.name, mesh)
-            obj.matrix_world = Matrix.Translation(offset) @ part.obj.matrix_world
-            obj["pf_lod"] = candidate
-            obj["pf_source"] = part.obj.name
-            obj["pf_asset"] = asset.name
-            obj["pf_offset"] = list(offset)
-            obj["pf_generated"] = True
-            col.objects.link(obj)
-            objs.append(obj)
+        attempts = 1 + (MAX_RETRIES if s.strict else 0)
+        accepted, factor = None, 1.0
+        for attempt in range(attempts):
+            goal_total = round(tgt_total * factor)
+            objs, q = _build_level(asset, shares, tris0, goal_total, candidate, offset, s, col, pixels)
+            problems = quality.warnings_for(candidate, q)
+            if problems and s.strict:
+                if attempt < attempts - 1:
+                    _discard(objs)
+                    factor *= RETRY_FACTOR
+                    continue
+                _discard(objs)
+                res.warnings.append("LOD%d omitido: no se puede reducir a ~%d tris sin deformarlo (%s)"
+                                    % (candidate, tgt_total, problems[0].split(": ", 1)[1]))
+                break
+            accepted = (objs, q, problems)
+            break
+        if accepted is None:
+            continue
+        objs, q, problems = accepted
         t, v = _mesh_totals(objs)
         prev = res.levels[-1].tris
         if t > prev * REDUCTION_GAIN:
-            for obj in objs:
-                mesh = obj.data
-                bpy.data.objects.remove(obj)
-                bpy.data.meshes.remove(mesh)
+            _discard(objs)
             res.notes.append("LOD%d omitido: %d tris no mejora los %d del anterior" % (candidate, t, prev))
             continue
+        if factor > 1.0:
+            res.notes.append("LOD%d subido a %d tris (objetivo %d) para no deformarlo" % (candidate, t, tgt_total))
         level = candidate
-        q = quality.worst(checks)
         res.levels.append(Level(level, t, v, objs, q))
-        res.warnings.extend(quality.warnings_for(level, q))
+        res.warnings.extend(problems)
     return res
 
 

@@ -39,9 +39,11 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
    (lo cubre `unity/PropForge/Editor/PropForgePostprocessor.cs`).
 7. **Pivote** (`base` por defecto): se desplaza solo el ancla del asset; los orígenes de las piezas
    (bisagra de la tapa) se conservan. LOD0 manda: los LODs usan el mismo ancla.
-8. **Control de calidad de LODs** (`core/quality.py`): por triángulo del LOD se mide la distancia a la
-   superficie original y el error de UV frente a la UV interpolada del original. p95 > 2 % de UV o > 1,2 % de
-   forma genera un AVISO. Sirve de verificación sin capturas.
+8. **Control de calidad de LODs** (`core/quality.py`): por triángulo del LOD se busca el punto más cercano del
+   original **entre caras que miran al mismo lado** (no confundir las dos paredes de una tabla) y se mide la
+   desviación de forma, el error de UV y, si hay BaseMap, la **diferencia de color real** (textura leída con la UV
+   del LOD y con la esperada). Avisa con p95 de color > 10 % o forma > 1,2 % (sin textura, UV > 2 %). Con `strict`
+   (por defecto) un LOD que falla se rehace con ×1,4 triángulos (hasta 2 veces) y, si sigue mal, se descarta.
 9. **Capas UV** (`meshutil.order_uv_layers`): Unity usa la primera capa del FBX; se pone primero la capa de las
    texturas (nodo UV Map si existe, si no la de render). Antes de la 0.1.2 se exportaba el orden original y los
    assets de dos capas salian en mosaico en Unity. `--drop-uv2` conserva esa capa, no la primera por azar.

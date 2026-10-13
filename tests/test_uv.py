@@ -10,7 +10,7 @@ import pytest
 import helpers
 from pirate_prop_forge import api
 from pirate_prop_forge.core import assets, export, lods, meshutil, textures
-from pirate_prop_forge.core.settings import lod_settings
+from helpers import lod_settings
 
 
 def _uv(mesh, i):

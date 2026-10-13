@@ -3,7 +3,7 @@ import numpy as np
 
 import helpers
 from pirate_prop_forge.core import assets, lods, quality
-from pirate_prop_forge.core.settings import lod_settings
+from helpers import lod_settings
 
 
 def _barrel():
@@ -58,4 +58,5 @@ def test_worst_aggregates_by_max():
     a = {"dev_p95": 0.001, "dev_max": 0.002, "uv_p95": 0.01, "uv_mean": 0.005}
     b = {"dev_p95": 0.004, "dev_max": 0.003, "uv_p95": None, "uv_mean": None}
     w = quality.worst([a, b])
-    assert w == {"dev_p95": 0.004, "dev_max": 0.003, "uv_p95": 0.01, "uv_mean": 0.005}
+    assert w == {"dev_p95": 0.004, "dev_max": 0.003, "uv_p95": 0.01, "uv_mean": 0.005,
+                 "color_p95": None, "color_mean": None}

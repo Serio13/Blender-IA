@@ -9,7 +9,7 @@ import helpers
 from pngread import read_png
 from pirate_prop_forge.core import assets, export, lods
 from pirate_prop_forge.core.errors import PFError
-from pirate_prop_forge.core.settings import lod_settings
+from helpers import lod_settings
 
 
 def _read_png(path, srgb=False):

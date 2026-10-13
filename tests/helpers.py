@@ -122,3 +122,79 @@ def make_chest(prefix="Cofre_test", loc=(5.0, 3.0, 0.0), suffix="_BAKED", cuts=8
     lid = make_detailed_box("%s_tapa%s" % (prefix, suffix), (0.70, 0.46, 0.25), hinge, cuts=cuts,
                             material=mat, origin_offset=(0, -0.23, -0.125))
     return base, lid, mat
+
+
+def make_staved_barrel(name="Barril_t_malla_BAKED", staves=16, nv=36, hoops=4, loc=(0, 0, 0), material=None,
+                       hoop_segments=48):
+    """Barril de tablas con UV por islas (cada tabla y cada aro tienen su isla en un atlas), como los _BAKED reales.
+
+    Es el caso dificil para Decimate: las costuras UV son muchisimas y cada isla tiene su propia densidad.
+    """
+    from math import cos, pi, sin
+    R, H = 0.30, 0.80
+
+    def radius(z):
+        t = (z / H) * 2 - 1
+        return R * (1 - 0.15 * t * t)
+
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    nu = 3
+    cols = 4
+    tiles = [(i % cols, i // cols) for i in range(staves)]
+
+    def add_quad(verts, uvs):
+        face = bm.faces.new(verts)
+        for loop, st in zip(face.loops, uvs):
+            loop[uv].uv = st
+        face.smooth = True
+
+    for s in range(staves):
+        a0, a1 = 2 * pi * s / staves, 2 * pi * (s + 1) / staves
+        grid = [[None] * (nu + 1) for _ in range(nv + 1)]
+        for j in range(nv + 1):
+            z = H * j / nv
+            for i in range(nu + 1):
+                a = a0 + (a1 - a0) * i / nu
+                grid[j][i] = bm.verts.new((radius(z) * cos(a), radius(z) * sin(a), z))
+        tx, ty = tiles[s]
+        u0, v0 = tx / cols + 0.01, 0.5 + ty / 8.0 + 0.004
+        for j in range(nv):
+            for i in range(nu):
+                f = [grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]]
+                us = [(u0 + 0.23 * i / nu, v0 + 0.115 * j / nv), (u0 + 0.23 * (i + 1) / nu, v0 + 0.115 * j / nv),
+                      (u0 + 0.23 * (i + 1) / nu, v0 + 0.115 * (j + 1) / nv), (u0 + 0.23 * i / nu, v0 + 0.115 * (j + 1) / nv)]
+                add_quad(f, us)
+    for h in range(hoops):
+        z0 = H * (0.12 + 0.76 * h / max(1, hoops - 1))
+        rings = []
+        for k in range(7):
+            z = z0 - 0.02 + 0.04 * k / 6
+            rings.append([bm.verts.new(((radius(z) + 0.008) * cos(2 * pi * m / hoop_segments),
+                                        (radius(z) + 0.008) * sin(2 * pi * m / hoop_segments), z))
+                          for m in range(hoop_segments)])
+        for k in range(6):
+            for m in range(hoop_segments):
+                m2 = (m + 1) % hoop_segments
+                f = [rings[k][m], rings[k][m2], rings[k + 1][m2], rings[k + 1][m]]
+                uu = [m / hoop_segments, (m + 1) / hoop_segments, (m + 1) / hoop_segments, m / hoop_segments]
+                vv = [k, k, k + 1, k + 1]
+                st = [(0.02 + 0.96 * u, 0.02 + h * 0.06 + 0.05 * v / 6) for u, v in zip(uu, vv)]
+                add_quad(f, st)
+    bm.normal_update()
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    if material is not None:
+        mesh.materials.append(material)
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    obj.location = loc
+    return obj
+
+
+def lod_settings(*args, **kw):
+    """lod_settings para pruebas de mecanica: sin descarte por calidad (las UV de las cajas de prueba son toscas)."""
+    from pirate_prop_forge.core import settings
+    kw.setdefault("strict", False)
+    return settings.lod_settings(*args, **kw)

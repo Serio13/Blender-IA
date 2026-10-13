@@ -55,6 +55,7 @@ class PF_PT_lods(bpy.types.Panel):
         col.prop(pf, "dissolve_deg")
         col.prop(pf, "smooth_deg")
         col.prop(pf, "keep_uv2")
+        col.prop(pf, "strict")
         col.prop(pf, "spread")
         row = self.layout.row(align=True)
         row.operator("pf.lods", icon="MOD_DECIM")

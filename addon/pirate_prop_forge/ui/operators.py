@@ -8,7 +8,7 @@ from ..core.settings import PRESETS
 def _common(pf):
     return dict(
         preset=pf.preset, name=pf.asset_name or None, min_tris=pf.min_tris, skip_below=pf.skip_below,
-        dissolve_deg=pf.dissolve_deg, smooth_deg=pf.smooth_deg, spread=pf.spread, keep_uv2=pf.keep_uv2,
+        dissolve_deg=pf.dissolve_deg, smooth_deg=pf.smooth_deg, spread=pf.spread, keep_uv2=pf.keep_uv2, strict=pf.strict,
     )
 
 

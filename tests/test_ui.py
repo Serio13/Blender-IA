@@ -33,6 +33,7 @@ def test_operators_work_on_selection(chest, registered, tmp_path):
     _select(base, lid)
     settings = bpy.context.scene.pf
     settings.dissolve_deg = 0.0
+    settings.strict = False
     assert bpy.ops.pf.lods() == {"FINISHED"}
     assert len([o for o in bpy.data.objects if o.get("pf_lod")]) == 4
     settings.out_dir = str(tmp_path)
@@ -58,6 +59,7 @@ def test_last_result_is_stored_and_drawable(chest, registered):
     base, lid, _ = chest
     _select(base, lid)
     bpy.context.scene.pf.dissolve_deg = 0.0
+    bpy.context.scene.pf.strict = False
     bpy.ops.pf.lods()
     text = bpy.context.scene.pf.last_result
     assert text.startswith("Cofre_test: LOD0")

@@ -20,7 +20,7 @@ def _fmt_levels(res):
 
 
 def _settings_kw(kw):
-    keys = ("min_tris", "skip_below", "dissolve_deg", "smooth_deg", "spread", "keep_uv2")
+    keys = ("min_tris", "skip_below", "dissolve_deg", "smooth_deg", "spread", "keep_uv2", "strict")
     return {k: kw.pop(k) for k in keys if k in kw}
 
 
