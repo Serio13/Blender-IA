@@ -57,6 +57,8 @@ def build_parser():
     sp.add_argument("--out", required=True, help="carpeta de salida")
     sp.add_argument("--layout", default="grouped", choices=("grouped", "flat"))
     sp.add_argument("--collider", default="hint", choices=("none", "hint", "mesh"))
+    sp.add_argument("--pivot", default="base", choices=("base", "center", "keep"),
+                    help="origen del asset: base (por defecto), center o keep (el actual)")
     sp.add_argument("--no-fbx", action="store_true")
     sp.add_argument("--no-blend", action="store_true")
     sp.add_argument("--regenerate", action="store_true", help="vuelve a generar los LODs")
@@ -91,6 +93,7 @@ def run(argv):
         formats = tuple(f for f, off in (("fbx", args.no_fbx), ("blend", args.no_blend)) if not off)
         out = api.export(args.target, out_dir=args.out, formats=formats, layout=args.layout,
                          collider=args.collider, regenerate=args.regenerate, verify=args.verify,
+                         pivot=args.pivot,
                          **common_kw, **_kw(args))
     elif args.cmd == "clean":
         out = api.clean(args.target, name=args.name)

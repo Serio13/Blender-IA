@@ -11,6 +11,7 @@ PRESETS = {
 }
 
 COLLIDERS = ("none", "hint", "mesh")
+PIVOTS = ("base", "center", "keep")
 LAYOUTS = ("grouped", "flat")
 
 

@@ -34,6 +34,8 @@ def lods(target=None, preset="estandar", ratios=None, tris=None, name=None, verb
         line = "%s: %s" % (asset.name, _fmt_levels(res))
         if res.notes and (verbose or len(res.levels) == 1):
             line += " (%s)" % "; ".join(res.notes)
+        if res.warnings:
+            line += " AVISO: " + "; ".join(res.warnings)
         lines.append(line)
     return "\n".join(lines)
 
@@ -46,14 +48,15 @@ def clean(target=None, name=None):
 
 def export(target=None, out_dir=None, preset="estandar", ratios=None, tris=None, name=None,
            formats=("fbx", "blend"), layout="grouped", collider="hint", regenerate=False,
-           col_max_tris=48, verify=False, verbose=False, **kw):
+           col_max_tris=48, verify=False, pivot="base", verbose=False, **kw):
     """Genera (o reutiliza) LODs y escribe el paquete: FBX + .blend + Textures + informe JSON."""
     if not out_dir:
         raise PFError("falta out_dir (carpeta de salida)")
     s = lod_settings(preset, ratios, tris, **_settings_kw(kw))
     if kw:
         raise PFError("argumentos desconocidos: %s" % ", ".join(kw))
-    opts = core_export.ExportOptions(tuple(formats), layout, collider, col_max_tris, s.keep_uv2, verify)
+    opts = core_export.ExportOptions(formats=tuple(formats), layout=layout, collider=collider,
+                                     col_max_tris=col_max_tris, keep_uv2=s.keep_uv2, verify=verify, pivot=pivot)
     opts.validate()
     lines = []
     for asset in assets.find_assets(target, name=name):
@@ -64,6 +67,7 @@ def export(target=None, out_dir=None, preset="estandar", ratios=None, tris=None,
         line = "%s: %s -> %s [%s%s]" % (
             asset.name, _fmt_levels(res), rep["package"],
             "+".join(k.upper() for k in rep["files"]), " +%d tex" % len(rep["textures"]) if rep["textures"] else "")
+        line += " pivote=%s" % rep["pivot"]
         if rep["warnings"]:
             line += " AVISO: " + "; ".join(rep["warnings"])
         if verbose and rep["notes"]:

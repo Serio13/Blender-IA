@@ -72,6 +72,7 @@ class PF_PT_export(bpy.types.Panel):
         row.prop(pf, "export_fbx", toggle=True)
         row.prop(pf, "export_blend", toggle=True)
         col.prop(pf, "layout")
+        col.prop(pf, "pivot")
         col.prop(pf, "collider")
         col.prop(pf, "verify")
         self.layout.operator("pf.export", icon="EXPORT")

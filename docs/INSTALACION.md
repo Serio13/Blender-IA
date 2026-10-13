@@ -32,7 +32,15 @@ y cambia a la rama claude/gifted-lamport-jkmw6u"*. Él ejecuta los comandos de g
    Activa *Separar LODs en X* si quieres verlos uno al lado del otro.
 4. En **Exportar a Unity** elige la carpeta de salida (puede ser `Assets/Props` de tu proyecto de Unity) y pulsa
    **Exportar paquete**. Si dejas `//Export/`, se crea junto al `.blend` (por eso hay que guardarlo antes).
-5. Resultado: una carpeta por asset con `.fbx`, `.blend`, `Textures/` e informe `_report.json`.
+5. Resultado: una carpeta por asset con `.fbx`, `Textures/`, informe `_report.json` y `Source~/` (el `.blend`).
+
+## D. Llevarlo a Unity
+
+1. **Copia la carpeta completa del asset** (no solo el `.fbx`) a `Assets/` de tu proyecto. Sin `Textures/` al
+   lado, el modelo sale sin color.
+2. Opcional pero recomendado: copia `unity/PropForge/Editor/PropForgePostprocessor.cs` a `Assets/Editor/`
+   (crea la carpeta `Editor` si no existe). Crea y asigna el material automáticamente.
+3. Más detalles y qué revisar: `docs/UNITY_NOTES.md`.
 
 ## Si algo falla
 

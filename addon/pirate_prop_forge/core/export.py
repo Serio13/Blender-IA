@@ -8,7 +8,7 @@ from mathutils import Matrix, Vector
 
 from . import colliders, lods, meshutil, naming, textures
 from .errors import PFError
-from .settings import COLLIDERS, LAYOUTS
+from .settings import COLLIDERS, LAYOUTS, PIVOTS
 
 VERSION = "0.1.0"
 LOD_SCREEN_HEIGHTS = (0.5, 0.2, 0.08, 0.03)
@@ -22,8 +22,11 @@ class ExportOptions:
     col_max_tris: int = colliders.COL_MAX_TRIS
     keep_uv2: bool = True
     verify: bool = False
+    pivot: str = "base"   # base = centro de la base en el origen; center = centro de la caja; keep = origen actual
 
     def validate(self):
+        if self.pivot not in PIVOTS:
+            raise PFError("pivot '%s' invalido (opciones: %s)" % (self.pivot, ", ".join(PIVOTS)))
         if self.layout not in LAYOUTS:
             raise PFError("layout '%s' invalido (opciones: %s)" % (self.layout, ", ".join(LAYOUTS)))
         if self.collider not in COLLIDERS:
@@ -38,6 +41,7 @@ class _Temp:
 
     def __init__(self):
         self.objects, self.meshes, self.materials, self.collections, self.scenes = [], [], [], [], []
+        self.images = []
         self.held = []
 
     def claim(self, datablocks, name):
@@ -57,6 +61,9 @@ class _Temp:
         for mat in self.materials:
             if mat.name in bpy.data.materials and mat.users == 0:
                 bpy.data.materials.remove(mat)
+        for img in self.images:
+            if img.name in bpy.data.images:
+                bpy.data.images.remove(img)
         for scene in self.scenes:
             if scene.name in bpy.data.scenes:
                 bpy.data.scenes.remove(scene)
@@ -71,14 +78,72 @@ class _Temp:
         self.held = []
 
 
+def _anchor_for_export(asset, level0_objs, mode):
+    """Matriz del ancla normalizada (sin escala) y desplazamiento del pivote respecto al origen actual."""
+    loc0, rot, _scale = asset.anchor.matrix_world.decompose()
+    loc = loc0.copy()
+    bounds = meshutil.objects_bounds(level0_objs)
+    if mode != "keep" and bounds is not None:
+        lo, hi = bounds
+        if mode == "base":
+            loc = Vector(((lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0, lo[2]))
+        else:
+            loc = Vector(((lo + hi) / 2.0).tolist())
+    return Matrix.LocRotScale(loc, rot, Vector((1.0, 1.0, 1.0))), loc - loc0
+
+
+def _export_material(name, tex_dir, tex_files, tmp):
+    """Material limpio que apunta a los PNG exportados, para que el FBX los referencie."""
+    by_kind = {t["kind"]: t for t in tex_files}
+    if not by_kind:
+        return None
+    tmp.claim(bpy.data.materials, name)
+    mat = bpy.data.materials.new(name)
+    tmp.materials.append(mat)
+    tree, links = mat.node_tree, mat.node_tree.links
+    bsdf = next(n for n in tree.nodes if n.type == "BSDF_PRINCIPLED")
+
+    def image_node(kind, srgb):
+        img = bpy.data.images.load(str(Path(tex_dir) / by_kind[kind]["file"]), check_existing=False)
+        img.colorspace_settings.name = "sRGB" if srgb else "Non-Color"
+        if kind == "MetallicSmoothness":
+            img.alpha_mode = "CHANNEL_PACKED"
+        tmp.images.append(img)
+        node = tree.nodes.new("ShaderNodeTexImage")
+        node.image = img
+        node.label = kind
+        return node
+
+    if "BaseMap" in by_kind:
+        links.new(image_node("BaseMap", True).outputs["Color"], bsdf.inputs["Base Color"])
+    if "Normal" in by_kind:
+        normal_map = tree.nodes.new("ShaderNodeNormalMap")
+        links.new(image_node("Normal", False).outputs["Color"], normal_map.inputs["Color"])
+        links.new(normal_map.outputs["Normal"], bsdf.inputs["Normal"])
+    if "MetallicSmoothness" in by_kind:
+        node = image_node("MetallicSmoothness", False)
+        sep = tree.nodes.new("ShaderNodeSeparateColor")
+        links.new(node.outputs["Color"], sep.inputs["Color"])
+        links.new(sep.outputs["Red"], bsdf.inputs["Metallic"])
+        invert = tree.nodes.new("ShaderNodeMath")
+        invert.operation = "SUBTRACT"
+        invert.inputs[0].default_value = 1.0
+        links.new(node.outputs["Alpha"], invert.inputs[1])
+        links.new(invert.outputs["Value"], bsdf.inputs["Roughness"])
+    if "Emission" in by_kind:
+        links.new(image_node("Emission", True).outputs["Color"], bsdf.inputs["Emission Color"])
+        bsdf.inputs["Emission Strength"].default_value = 1.0
+    return mat
+
+
 def _unity_name(asset, label, level, with_lod):
     base = asset if not label else "%s_%s" % (asset, naming.safe(label))
     return "%s_LOD%d" % (base, level) if with_lod else base
 
 
-def _build_hierarchy(asset, levels, opts, tmp, tmp_col):
+def _build_hierarchy(asset, levels, opts, tmp, tmp_col, anchor, export_mat):
     """Copias normalizadas (ancla en el origen, escala aplicada) con nodos aptos para Unity."""
-    anchor_inv = meshutil.anchor_matrix(asset.anchor).inverted()
+    anchor_inv = anchor.inverted()
     with_lod = len(levels) > 1
     grouped = opts.layout == "grouped" and not asset.single
 
@@ -95,6 +160,8 @@ def _build_hierarchy(asset, levels, opts, tmp, tmp_col):
     mat_cache = {}
 
     def unity_material(src, slot):
+        if slot == 0 and export_mat is not None:
+            return export_mat
         if src.name not in mat_cache:
             mat_name = "M_%s" % asset.name if slot == 0 else "M_%s_%d" % (asset.name, slot)
             tmp.claim(bpy.data.materials, mat_name)
@@ -177,7 +244,7 @@ def _fbx(path, collection):
         mesh_smooth_type="OFF",
         use_mesh_modifiers=True,
         add_leaf_bones=False,
-        path_mode="STRIP",
+        path_mode="RELATIVE",
         embed_textures=False,
         bake_anim=False,
     )
@@ -187,7 +254,8 @@ def _write_blend(path, asset_name, tmp_col):
     """Guarda la jerarquia como coleccion (para Append). Escribir una Scene cierra Blender."""
     if asset_name not in bpy.data.collections:
         tmp_col.name = asset_name
-    bpy.data.libraries.write(str(path), {tmp_col}, fake_user=True, compress=True)
+    Path(path).parent.mkdir(parents=True, exist_ok=True)
+    bpy.data.libraries.write(str(path), {tmp_col}, fake_user=True, compress=True, path_remap="RELATIVE")
 
 
 def verify_fbx(path):
@@ -224,7 +292,7 @@ def export_asset(asset, out_dir, lod_result, opts):
     opts.validate()
     pkg = Path(out_dir) / asset.name
     pkg.mkdir(parents=True, exist_ok=True)
-    warnings, notes = [], list(lod_result.notes)
+    warnings, notes = list(lod_result.warnings), list(lod_result.notes)
 
     images, unknown = textures.collect_images([p.obj for p in asset.parts])
     tex_files, tex_warn = [], []
@@ -242,7 +310,9 @@ def export_asset(asset, out_dir, lod_result, opts):
     bpy.context.scene.collection.children.link(tmp_col)
     files, verify = {}, None
     try:
-        out_nodes = _build_hierarchy(asset, lod_result.levels, opts, tmp, tmp_col)
+        anchor, pivot_shift = _anchor_for_export(asset, lod_result.levels[0].objects, opts.pivot)
+        export_mat = _export_material("M_%s" % asset.name, pkg / "Textures", tex_files, tmp)
+        out_nodes = _build_hierarchy(asset, lod_result.levels, opts, tmp, tmp_col, anchor, export_mat)
         collider = None
         if opts.collider != "none":
             collider = _add_collider(asset, out_nodes, opts, tmp, tmp_col)
@@ -252,9 +322,10 @@ def export_asset(asset, out_dir, lod_result, opts):
             _fbx(fbx_path, tmp_col)
             files["fbx"] = fbx_path.name
         if "blend" in opts.formats:
-            blend_path = pkg / (asset.name + ".blend")
+            # La carpeta "Source~" la ignora Unity: asi el .blend no se importa como un modelo mas.
+            blend_path = pkg / "Source~" / (asset.name + ".blend")
             _write_blend(blend_path, asset.name, tmp_col)
-            files["blend"] = blend_path.name
+            files["blend"] = "Source~/" + blend_path.name
         uv_layers = max(len(o.data.uv_layers) for o in out_nodes[0])
         node_names = {str(i): [o.name for o in objs] for i, objs in out_nodes.items()}
     finally:
@@ -270,9 +341,13 @@ def export_asset(asset, out_dir, lod_result, opts):
         "source_blend": Path(bpy.data.filepath).name if bpy.data.filepath else None,
         "layout": opts.layout,
         "anchor": asset.anchor.name,
+        "pivot": opts.pivot,
+        "pivot_shift_m_blender_xyz": meshutil.r3(pivot_shift),
         "size_m_blender_xyz": meshutil.r3(hi - lo),
         "uv_layers": uv_layers,
-        "lods": [{"level": lv.index, "tris": lv.tris, "verts": lv.verts} for lv in lod_result.levels],
+        "lods": [dict({"level": lv.index, "tris": lv.tris, "verts": lv.verts},
+                      **({"dev_p95": lv.quality["dev_p95"], "uv_p95": lv.quality["uv_p95"]} if lv.quality else {}))
+                 for lv in lod_result.levels],
         "nodes": node_names,
         "files": files,
         "textures": tex_files,

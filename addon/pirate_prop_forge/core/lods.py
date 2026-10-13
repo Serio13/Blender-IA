@@ -7,7 +7,7 @@ import bmesh  # noqa: E402  (con el modulo bpy, bmesh solo existe tras importar 
 import numpy as np
 from mathutils import Matrix, Vector
 
-from . import meshutil, naming
+from . import meshutil, naming, quality
 
 LODS_COLLECTION = "PF_LODS"
 MIN_PART_TRIS = 8      # una pieza no baja de aqui
@@ -22,6 +22,7 @@ class Level:
     tris: int
     verts: int
     objects: list = field(default_factory=list)
+    quality: dict = None
 
 
 @dataclass
@@ -29,6 +30,7 @@ class LodResult:
     asset: str
     levels: list = field(default_factory=list)
     notes: list = field(default_factory=list)
+    warnings: list = field(default_factory=list)
 
     @property
     def tris(self):
@@ -194,13 +196,14 @@ def generate_lods(asset, s):
     for tgt_total in targets:
         candidate = level + 1
         offset = Vector((candidate * width * 1.25, 0.0, 0.0)) if s.spread else Vector()
-        objs = []
+        objs, checks = [], []
         for part, part_tris in shares:
             if part_tris <= COPY_BELOW:
                 goal = part_tris
             else:
                 goal = max(MIN_PART_TRIS, round(tgt_total * part_tris / tris0))
             mesh = make_lod_mesh(part.obj, goal, s)
+            checks.append(quality.compare(part.obj.data, mesh))
             stem = naming.strip_baked(part.obj.name)
             mesh.name = "%s_LOD%d" % (stem, candidate)
             obj = bpy.data.objects.new(mesh.name, mesh)
@@ -222,7 +225,9 @@ def generate_lods(asset, s):
             res.notes.append("LOD%d omitido: %d tris no mejora los %d del anterior" % (candidate, t, prev))
             continue
         level = candidate
-        res.levels.append(Level(level, t, v, objs))
+        q = quality.worst(checks)
+        res.levels.append(Level(level, t, v, objs, q))
+        res.warnings.extend(quality.warnings_for(level, q))
     return res
 
 

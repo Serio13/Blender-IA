@@ -31,6 +31,10 @@ class PF_Settings(bpy.types.PropertyGroup):
         ("none", "Ninguna", ""),
         ("hint", "Solo datos", "Caja/capsula sugerida en el informe, sin mallas"),
         ("mesh", "Malla _COL", "Casco convexo simplificado con sufijo _COL")])
+    pivot: EnumProperty(name="Origen", default="base", items=[
+        ("base", "Base", "El centro de la base del asset queda en el origen (recomendado para Unity)"),
+        ("center", "Centro", "El centro de la caja del asset queda en el origen"),
+        ("keep", "Mantener", "Se respeta el origen actual del objeto")])
     verify: BoolProperty(name="Verificar FBX", default=False)
     last_result: StringProperty(name="Ultimo resultado", default="")
     token_saver: BoolProperty(name="Modo ahorro de tokens", default=True,

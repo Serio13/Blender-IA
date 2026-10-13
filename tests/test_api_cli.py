@@ -12,13 +12,13 @@ def test_lods_output_is_short(chest):
     out = api.lods("*_BAKED", preset="estandar", dissolve_deg=0)
     assert out.count("\n") == 0
     assert out.startswith("Cofre_test: LOD0 14904 | LOD1 ") and "LOD2" in out
-    assert len(out) < 100
+    assert len(out) < 250  # una linea; los avisos de calidad solo aparecen si hay problema
 
 
 def test_export_summary_and_files(chest, tmp_path):
     out = api.export("*_BAKED", out_dir=str(tmp_path), dissolve_deg=0)
     assert out.splitlines()[0].startswith("Cofre_test: LOD0 14904")
-    assert "[FBX+BLEND +3 tex]" in out
+    assert "[FBX+BLEND +3 tex]" in out and "pivote=base" in out
     assert (tmp_path / "Cofre_test" / "Cofre_test.fbx").exists()
 
 
@@ -51,7 +51,7 @@ def test_cli_lods_export_profile_clean(chest, tmp_path, capsys):
     assert cli.main(["export", "--target", "*_BAKED", "--out", str(tmp_path), "--no-blend", "--collider", "none",
                      "--regenerate", "--tris", "4000,1000", "--dissolve-deg", "0"]) == 0
     assert (tmp_path / "Cofre_test" / "Cofre_test.fbx").exists()
-    assert not (tmp_path / "Cofre_test" / "Cofre_test.blend").exists()
+    assert not (tmp_path / "Cofre_test" / "Source~").exists()
     assert cli.main(["profile", "--out", str(tmp_path / "p.json")]) == 0
     assert json.loads((tmp_path / "p.json").read_text())["assets"] == 1
     assert cli.main(["clean", "--target", "*_BAKED"]) == 0

@@ -60,7 +60,7 @@ class PF_OT_export(_PFOperator):
     def run(self, context, pf):
         formats = tuple(f for f, on in (("fbx", pf.export_fbx), ("blend", pf.export_blend)) if on)
         return api.export(None, out_dir=bpy.path.abspath(pf.out_dir), formats=formats, layout=pf.layout,
-                          collider=pf.collider, verify=pf.verify, verbose=not pf.token_saver, **_common(pf))
+                          collider=pf.collider, pivot=pf.pivot, verify=pf.verify, verbose=not pf.token_saver, **_common(pf))
 
 
 class PF_OT_profile(_PFOperator):

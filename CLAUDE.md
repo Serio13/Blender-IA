@@ -6,6 +6,7 @@
   solo si te lo piden.
 - **Una sola lectura de estilo:** `pf.profile("style_profile.json")` y lee ese archivo (~1 KB). No pegues
   ni leas informes grandes de la escena.
+- Si una línea trae `AVISO:` (calidad de LOD, texturas), repórtalo tal cual; no lo investigues con capturas.
 - **Varios assets en una llamada:** patrones (`"*_BAKED"`), no un comando por asset.
 - Convenciones del proyecto: assets `Familia_variante_V2_pieza_BAKED`; piezas `base`/`tapa`/`malla`; un
   material horneado por pieza; texturas `TX_<asset>_<BaseColor|Normal|Metallic|Roughness|MetalSmooth|Emission>`;

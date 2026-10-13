@@ -31,8 +31,18 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
    terminar (`_Temp.claim`).
 4. Escala aplicada en la copia, con ancla (traslación + rotación, sin escala) en el origen; el pivote de
    cada pieza (p. ej. la bisagra de la tapa) se conserva.
-5. `bpy.data.libraries.write` con una **Scene** cierra Blender; con una **Collection** funciona.
-6. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
+5. `bpy.data.libraries.write` con una **Scene** cierra Blender; con una **Collection** funciona. El `.blend`
+   va en `Source~/` (Unity ignora esa carpeta) y se escribe con `path_remap="RELATIVE"`.
+6. **Texturas en el FBX:** el material exportado se reconstruye con los PNG ya escritos
+   (`BaseMap`→Base Color, `Normal`→Normal Map) y se exporta con `path_mode="RELATIVE"`; así el FBX contiene
+   `DiffuseColor`/`NormalMap` → `Textures/<Asset>_*.png`. Blender no exporta metal/smoothness en FBX
+   (lo cubre `unity/PropForge/Editor/PropForgePostprocessor.cs`).
+7. **Pivote** (`base` por defecto): se desplaza solo el ancla del asset; los orígenes de las piezas
+   (bisagra de la tapa) se conservan. LOD0 manda: los LODs usan el mismo ancla.
+8. **Control de calidad de LODs** (`core/quality.py`): por triángulo del LOD se mide la distancia a la
+   superficie original y el error de UV frente a la UV interpolada del original. p95 > 2 % de UV o > 1,2 % de
+   forma genera un AVISO. Sirve de verificación sin capturas.
+9. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
    afecta a imágenes generadas, no a PNG empaquetados); se fija antes.
 
 ## Decisiones
@@ -50,7 +60,7 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
 | Fase | Contenido | Estado |
 |---|---|---|
 | 1 | LODs por pieza, paquete Unity, perfil de estilo, panel, CLI, pruebas | **hecha** |
-| 1b | Rehorneado de normales desde LOD0 (plan B si Decimate deforma UV) | pendiente |
+| 1b | Rehorneado de normales/UV desde LOD0 (plan B si el control de calidad avisa de que Decimate deforma) | pendiente |
 | 2 | Automatizar horneado V2 → BAKED; generadores paramétricos (cofre, barril, llave) y spec JSON | pendiente |
 | 3 | Resolutor de intención (texto/imagen/ejemplo) con proveedores intercambiables (locales y APIs) | pendiente |
 | 4 | Worker de IA local con cooldown térmico (GPU), SF3D opcional, modo comercial seguro de licencias | pendiente |

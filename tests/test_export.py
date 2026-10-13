@@ -33,9 +33,11 @@ def _run(chest, tmp_path, **opt):
 def test_package_layout(chest, tmp_path):
     _, _, rep = _run(chest, tmp_path)
     pkg = tmp_path / "Cofre_test"
-    names = sorted(p.name for p in pkg.rglob("*") if p.is_file())
-    assert names == ["Cofre_test.blend", "Cofre_test.fbx", "Cofre_test_BaseMap.png",
-                     "Cofre_test_MetallicSmoothness.png", "Cofre_test_Normal.png", "Cofre_test_report.json"]
+    names = sorted(str(p.relative_to(pkg)).replace("\\", "/") for p in pkg.rglob("*") if p.is_file())
+    assert names == ["Cofre_test.fbx", "Cofre_test_report.json", "Source~/Cofre_test.blend",
+                     "Textures/Cofre_test_BaseMap.png", "Textures/Cofre_test_MetallicSmoothness.png",
+                     "Textures/Cofre_test_Normal.png"]
+    assert rep["files"] == {"fbx": "Cofre_test.fbx", "blend": "Source~/Cofre_test.blend"}
     assert (pkg / "Textures" / "Cofre_test_BaseMap.png").exists()
     report = json.loads((pkg / "Cofre_test_report.json").read_text(encoding="utf-8"))
     assert report["asset"] == "Cofre_test" and len(report["lods"]) == 3
@@ -52,10 +54,10 @@ def test_fbx_nodes_origin_and_pivot(chest, tmp_path):
     nodes = {_strip(n) for n in v["nodes"]}
     assert {"Cofre_test_LOD0", "Cofre_test_LOD1", "Cofre_test_LOD2",
             "Cofre_test_base_LOD0", "Cofre_test_tapa_LOD2"} <= nodes
-    # el ancla (base) del asset estaba en (5, 3, 0) y debe quedar en el origen
+    # el asset estaba en (5, 3, 0): con pivote "base" queda centrado en X/Y y apoyado en Z=0
     lo, hi = v["bounds"]["min"], v["bounds"]["max"]
-    assert lo == pytest.approx([-0.36, -0.24, 0.0], abs=0.01)
-    assert hi == pytest.approx([0.36, 0.70, 0.55], abs=0.01)
+    assert lo == pytest.approx([-0.36, -0.47, 0.0], abs=0.01)
+    assert hi == pytest.approx([0.36, 0.47, 0.55], abs=0.01)
     # tris por LOD0 conservados en el FBX
     assert v["tris"]["Cofre_test_base_LOD0"] == 7452
 
@@ -90,7 +92,7 @@ def test_basecolor_and_normal_are_raw(chest, tmp_path):
 
 def test_blend_can_be_appended(chest, tmp_path):
     _run(chest, tmp_path, formats=("blend",))
-    path = tmp_path / "Cofre_test" / "Cofre_test.blend"
+    path = tmp_path / "Cofre_test" / "Source~" / "Cofre_test.blend"
     with bpy.data.libraries.load(str(path)) as (src, _dst):
         assert "Cofre_test" in src.collections
         assert "M_Cofre_test" in src.materials
@@ -100,7 +102,7 @@ def test_collider_hint_and_mesh(chest, tmp_path):
     _, _, rep = _run(chest, tmp_path, collider="mesh")
     box = rep["collider"]["hint"]["box"]
     assert box["size_unity"] == pytest.approx([0.72, 0.55, 0.94], abs=0.01)
-    assert box["center_blender"] == pytest.approx([0.0, 0.23, 0.275], abs=0.01)
+    assert box["center_blender"] == pytest.approx([0.0, 0.0, 0.275], abs=0.01)
     assert rep["collider"]["mesh"]["tris"] <= 48
     assert any(_strip(n) == "Cofre_test_COL" for n in rep["verify"]["nodes"])
 
@@ -219,3 +221,82 @@ def test_modifiers_on_sources_are_noted(chest):
     base.modifiers.new("b", "BEVEL")
     res = lods.generate_lods(assets.find_assets([base.name, lid.name])[0], lod_settings("estandar", dissolve_deg=0))
     assert any("modificadores" in n for n in res.notes)
+
+
+def _fbx_texture_paths(path):
+    import sys
+    from pathlib import Path as P
+    addons = P(bpy.utils.system_resource("SCRIPTS")) / "addons_core"
+    if str(addons) not in sys.path:
+        sys.path.insert(0, str(addons))
+    from io_scene_fbx import parse_fbx
+    root, _ver = parse_fbx.parse(str(path))
+    objects = next(e for e in root.elems if e.id == b"Objects")
+    out = []
+    for tex in (e for e in objects.elems if e.id == b"Texture"):
+        rel = next(c for c in tex.elems if c.id == b"RelativeFilename")
+        out.append(rel.props[0].decode().replace("\\", "/"))
+    return out
+
+
+def test_fbx_references_the_exported_textures(chest, tmp_path):
+    """Sin esto Unity muestra el modelo sin color: el FBX debe apuntar a Textures/<Asset>_*.png."""
+    _run(chest, tmp_path, formats=("fbx",))
+    refs = _fbx_texture_paths(tmp_path / "Cofre_test" / "Cofre_test.fbx")
+    assert "Textures/Cofre_test_BaseMap.png" in refs
+    assert "Textures/Cofre_test_Normal.png" in refs
+
+
+def test_blend_material_links_exported_textures(chest, tmp_path):
+    _run(chest, tmp_path, formats=("blend",))
+    path = tmp_path / "Cofre_test" / "Source~" / "Cofre_test.blend"
+    with bpy.data.libraries.load(str(path)) as (src, dst):
+        dst.materials = ["M_Cofre_test"]
+    mat = bpy.data.materials["M_Cofre_test"]
+    kinds = {n.label for n in mat.node_tree.nodes if n.type == "TEX_IMAGE"}
+    assert kinds == {"BaseMap", "Normal", "MetallicSmoothness"}
+    for n in mat.node_tree.nodes:
+        if n.type == "TEX_IMAGE":
+            assert n.image.filepath.endswith(".png") and "Textures" in n.image.filepath
+
+
+def _barrel_with_center_origin(name="Barril_p"):
+    mat = helpers.make_material(name)
+    barrel = helpers.make_barrel(name + "_malla_BAKED", loc=(4, 2, 0.4), material=mat, segs=24, rings=16)
+    return barrel
+
+
+@pytest.mark.parametrize("mode,expect_min_z,expect_max_z", [
+    ("base", 0.0, 0.78),       # apoyado en el suelo
+    ("center", -0.39, 0.39),   # centrado en la caja
+    ("keep", -0.39, 0.39),     # el origen del objeto estaba a media altura
+])
+def test_pivot_modes(tmp_path, mode, expect_min_z, expect_max_z):
+    barrel = _barrel_with_center_origin()
+    asset = assets.find_assets([barrel.name])[0]
+    res = lods.generate_lods(asset, lod_settings("estandar", skip_below=100))
+    rep = export.export_asset(asset, tmp_path, res, export.ExportOptions(pivot=mode, verify=True))
+    lo, hi = rep["verify"]["bounds"]["min"], rep["verify"]["bounds"]["max"]
+    assert rep["pivot"] == mode
+    assert lo[2] == pytest.approx(expect_min_z, abs=0.02) and hi[2] == pytest.approx(expect_max_z, abs=0.02)
+    assert (lo[0] + hi[0]) / 2 == pytest.approx(0.0, abs=0.02)
+    assert (lo[1] + hi[1]) / 2 == pytest.approx(0.0, abs=0.02)
+
+
+def test_pivot_keeps_part_origins(chest, tmp_path):
+    """La bisagra de la tapa debe conservar su posicion relativa a la base."""
+    _, _, rep = _run(chest, tmp_path, pivot="base", formats=("fbx",))
+    nodes = rep["verify"]["nodes"]
+    assert any(n.startswith("Cofre_test_tapa_LOD0") for n in nodes)
+
+
+def test_quality_goes_to_the_report(chest, tmp_path):
+    _, _, rep = _run(chest, tmp_path, formats=("fbx",))
+    report = json.loads((tmp_path / "Cofre_test" / "Cofre_test_report.json").read_text(encoding="utf-8"))
+    assert "uv_p95" not in report["lods"][0] and "uv_p95" in report["lods"][1]
+    assert "pivot_shift_m_blender_xyz" in report and report["pivot"] == "base"
+
+
+def test_invalid_pivot():
+    with pytest.raises(PFError):
+        export.ExportOptions(pivot="x").validate()
