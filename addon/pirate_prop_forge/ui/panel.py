@@ -1,4 +1,19 @@
+import textwrap
+
 import bpy
+
+
+def draw_result(layout, text, width=42, max_lines=14):
+    """Muestra el ultimo resultado dentro del panel (los avisos de la barra de estado desaparecen)."""
+    box = layout.box()
+    shown = 0
+    for line in text.splitlines():
+        for chunk in textwrap.wrap(line, width, break_long_words=True) or [""]:
+            if shown >= max_lines:
+                box.label(text="...")
+                return
+            box.label(text=chunk)
+            shown += 1
 
 
 class PF_PT_main(bpy.types.Panel):
@@ -14,6 +29,8 @@ class PF_PT_main(bpy.types.Panel):
         col.prop(pf, "asset_name")
         col.prop(pf, "token_saver")
         self.layout.operator("pf.profile", icon="INFO")
+        if pf.last_result:
+            draw_result(self.layout, pf.last_result)
 
 
 class PF_PT_lods(bpy.types.Panel):

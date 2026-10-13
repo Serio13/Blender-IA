@@ -52,3 +52,35 @@ def test_operator_reports_error_without_selection(registered):
 def test_panels_exist(registered):
     for cls in ("PF_PT_main", "PF_PT_lods", "PF_PT_export"):
         assert hasattr(bpy.types, cls)
+
+
+def test_last_result_is_stored_and_drawable(chest, registered):
+    base, lid, _ = chest
+    _select(base, lid)
+    bpy.context.scene.pf.dissolve_deg = 0.0
+    bpy.ops.pf.lods()
+    text = bpy.context.scene.pf.last_result
+    assert text.startswith("Cofre_test: LOD0")
+    from pirate_prop_forge.ui import panel
+
+    class FakeBox:
+        def __init__(self):
+            self.labels = []
+
+        def label(self, text=""):
+            self.labels.append(text)
+
+        def box(self):
+            return self
+
+    fake = FakeBox()
+    panel.draw_result(fake, "x" * 100 + "\n" + text)
+    assert fake.labels and all(len(t) <= 42 for t in fake.labels)
+
+
+def test_error_is_stored_too(registered):
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    with pytest.raises(RuntimeError):
+        bpy.ops.pf.lods()
+    assert bpy.context.scene.pf.last_result.startswith("ERROR:")

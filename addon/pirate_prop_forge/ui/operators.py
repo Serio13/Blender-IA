@@ -23,8 +23,10 @@ class _PFOperator(bpy.types.Operator):
         try:
             text = self.run(context, pf)
         except PFError as exc:
+            pf.last_result = "ERROR: %s" % exc
             self.report({"ERROR"}, str(exc))
             return {"CANCELLED"}
+        pf.last_result = text
         for line in text.splitlines():
             self.report({"INFO"}, line)
         if not pf.token_saver:

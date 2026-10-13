@@ -32,6 +32,7 @@ class PF_Settings(bpy.types.PropertyGroup):
         ("hint", "Solo datos", "Caja/capsula sugerida en el informe, sin mallas"),
         ("mesh", "Malla _COL", "Casco convexo simplificado con sufijo _COL")])
     verify: BoolProperty(name="Verificar FBX", default=False)
+    last_result: StringProperty(name="Ultimo resultado", default="")
     token_saver: BoolProperty(name="Modo ahorro de tokens", default=True,
                               description="Respuestas minimas y sin informacion extra")
 

@@ -7,14 +7,17 @@ gastar pocos tokens al usarlo desde Claude Code.
 Estado: **Fase 1** (LODs + exportación + perfil de estilo). Generación con IA, horneado automático y
 protección térmica llegan en fases posteriores (ver `docs/ARCHITECTURE.md`).
 
-## Instalar
+## Instalar (sin terminal)
 
-```powershell
-python tools/build_extension.py        # crea dist/pirate_prop_forge-0.1.0.zip
-```
+1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.0.zip` en la rama
+   `claude/gifted-lamport-jkmw6u` (en GitHub: abre el archivo → botón *Download raw file* ⬇).
+   No lo descomprimas.
+2. Blender → *Edit → Preferences → Get Extensions* → menú **▾** (arriba a la derecha) →
+   **Install from Disk…** → elige el `.zip` → deja marcado *Enable*.
+3. En la vista 3D pulsa **N** → pestaña **Prop Forge**.
 
-Blender → *Edición → Preferencias → Add-ons → ▾ → Instalar desde disco…* → elige el `.zip`.
-El panel aparece en la vista 3D: **N → Prop Forge**.
+Guía completa con GitHub Desktop y solución de problemas: `docs/INSTALACION.md`.
+Para regenerar el instalador tras cambiar el código: `python tools/build_extension.py releases`.
 
 ## Qué hace con tus `_BAKED`
 
