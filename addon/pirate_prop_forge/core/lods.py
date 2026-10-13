@@ -7,7 +7,7 @@ import bmesh  # noqa: E402  (con el modulo bpy, bmesh solo existe tras importar 
 import numpy as np
 from mathutils import Matrix, Vector
 
-from . import meshutil, naming, quality
+from . import meshutil, naming, quality, textures
 
 LODS_COLLECTION = "PF_LODS"
 MIN_PART_TRIS = 8      # una pieza no baja de aqui
@@ -148,14 +148,13 @@ def make_lod_mesh(src_obj, target_tris, s):
         bpy.data.objects.remove(tmp)
     flat = _flat_fraction(src_mesh) > 0.5
     _apply_shading(mesh, flat, s.smooth_deg)
-    if not s.keep_uv2:
-        drop_extra_uvs(mesh)
+    meshutil.order_uv_layers(mesh, textures.render_uv_name([src_obj]), keep_extra=s.keep_uv2)
     return mesh
 
 
-def drop_extra_uvs(mesh):
-    while len(mesh.uv_layers) > 1:
-        mesh.uv_layers.remove(mesh.uv_layers[-1])
+def drop_extra_uvs(mesh, preferred=None):
+    """Deja solo la capa UV que usan las texturas."""
+    meshutil.order_uv_layers(mesh, preferred, keep_extra=False)
 
 
 def _level_targets(total0, s):
@@ -203,7 +202,7 @@ def generate_lods(asset, s):
             else:
                 goal = max(MIN_PART_TRIS, round(tgt_total * part_tris / tris0))
             mesh = make_lod_mesh(part.obj, goal, s)
-            checks.append(quality.compare(part.obj.data, mesh))
+            checks.append(quality.compare(part.obj.data, mesh, textures.render_uv_name([part.obj])))
             stem = naming.strip_baked(part.obj.name)
             mesh.name = "%s_LOD%d" % (stem, candidate)
             obj = bpy.data.objects.new(mesh.name, mesh)

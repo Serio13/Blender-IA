@@ -147,3 +147,28 @@ def write_texture_set(images, out_dir, asset):
         if rough is None:
             warnings.append("sin textura Roughness: se asume smoothness 0.5")
     return files, warnings
+
+
+def render_uv_name(objs):
+    """Nombre de la capa UV que fuerza el material con un nodo UV Map (tambien tras un nodo Mapping), o None."""
+    seen = set()
+    for obj in objs:
+        for slot in obj.material_slots:
+            mat = slot.material
+            if mat is None or mat.name in seen or mat.node_tree is None:
+                continue
+            seen.add(mat.name)
+            for node in mat.node_tree.nodes:
+                if node.type != "TEX_IMAGE":
+                    continue
+                socket = node.inputs.get("Vector")
+                for _ in range(4):
+                    if socket is None or not socket.is_linked:
+                        break
+                    src = socket.links[0].from_node
+                    if src.type == "UVMAP":
+                        if src.uv_map:
+                            return src.uv_map
+                        break
+                    socket = src.inputs.get("Vector")
+    return None

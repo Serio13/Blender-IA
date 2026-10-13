@@ -103,7 +103,15 @@ def check(target=None, name=None):
             ("%s %d" % (k, max(img.size))) if img.size[0] else ("%s VACIA" % k)
             for k, img in sorted(images.items())) or "SIN TEXTURAS"
         line = "%s: %d pieza(s), %d tris, texturas: %s" % (asset.name, len(asset.parts), tris, tex)
+        uv_layers = objs[0].data.uv_layers
+        if len(uv_layers):
+            render = meshutil.render_uv_index(objs[0].data, textures.render_uv_name(objs))
+            marks = ", ".join(layer.name + ("*" if i == render else "") for i, layer in enumerate(uv_layers))
+            line_uv = " | UV: " + marks + (" (la de texturas se pondra primera)" if render else "")
+        else:
+            line_uv = " | SIN UV"
         missing = [k for k in ("BaseMap", "Normal") if k not in images]
+        line += line_uv
         if images and missing:
             line += " | FALTA: " + ", ".join(missing)
         if unknown:

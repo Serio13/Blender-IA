@@ -19,6 +19,14 @@ Barril_simple_V2/
 El FBX lleva el material `M_<Asset>` con `DiffuseColor` → `_BaseMap` y `NormalMap` → `_Normal`. Blender no
 exporta metal/smoothness en FBX; para eso está el script de Unity.
 
+## Textura en mosaico (UV)
+
+Unity usa siempre la **primera** capa UV del FBX. Si el asset tiene dos capas y la de las texturas es la
+segunda (la marcada con la cámara en *Object Data → UV Maps*), Blender se ve bien pero Unity muestra un
+mosaico. Desde la 0.1.2 el plugin reordena las capas al exportar (primero la de render, o la que fuerce un
+nodo UV Map del material). `Revisar seleccion` muestra las capas y marca con `*` la de las texturas. Si hay
+mosaico y el asset solo tiene una capa, comprueba *Model → Geometry → Swap UVs* en Unity.
+
 ## Script de importación (recomendado)
 
 Copia `unity/PropForge/Editor/PropForgePostprocessor.cs` a `Assets/Editor/` (crea la carpeta si no existe).

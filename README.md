@@ -9,7 +9,7 @@ protección térmica llegan en fases posteriores (ver `docs/ARCHITECTURE.md`).
 
 ## Instalar (sin terminal)
 
-1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.1.zip` en la rama
+1. **Descarga el instalador ya generado:** `releases/pirate_prop_forge-0.1.2.zip` en la rama
    `claude/gifted-lamport-jkmw6u` (en GitHub: abre el archivo → botón *Download raw file* ⬇).
    No lo descomprimas.
 2. Blender → *Edit → Preferences → Get Extensions* → menú **▾** (arriba a la derecha) →

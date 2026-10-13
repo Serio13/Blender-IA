@@ -11,6 +11,8 @@ from mathutils import Vector
 from mathutils.bvhtree import BVHTree
 from mathutils.interpolate import poly_3d_calc
 
+from . import meshutil
+
 MAX_SAMPLES = 4000
 UV_WARN = 0.02    # p95 de error UV por encima de esto: el mapeo de textura se desplaza
 DEV_WARN = 0.012  # p95 de desviacion de forma por encima de esto: el LOD se aleja del original
@@ -20,7 +22,15 @@ def _pct(values, q):
     return float(np.percentile(values, q)) if len(values) else 0.0
 
 
-def compare(ref_mesh, lod_mesh):
+def _uv_layer(bm, mesh, preferred):
+    """Capa UV de bmesh que usan las texturas: la nombrada, la de render o la primera."""
+    if len(mesh.uv_layers) == 0:
+        return None
+    name = mesh.uv_layers[meshutil.render_uv_index(mesh, preferred)].name
+    return bm.loops.layers.uv.get(name)
+
+
+def compare(ref_mesh, lod_mesh, uv_name=None):
     """Compara dos meshes en el mismo espacio local. Devuelve dev_p95, dev_max, uv_p95, uv_mean (o uv None)."""
     ref, lod = bmesh.new(), bmesh.new()
     try:
@@ -32,8 +42,8 @@ def compare(ref_mesh, lod_mesh):
         if not ref_tris or not lod_tris:
             return {"dev_p95": 0.0, "dev_max": 0.0, "uv_p95": None, "uv_mean": None}
         bvh = BVHTree.FromBMesh(ref)
-        ref_uv = ref.loops.layers.uv.active
-        lod_uv = lod.loops.layers.uv.active
+        ref_uv = _uv_layer(ref, ref_mesh, uv_name)
+        lod_uv = _uv_layer(lod, lod_mesh, uv_name)
         coords = np.array([v.co[:] for v in ref.verts])
         diag = float(np.linalg.norm(coords.max(axis=0) - coords.min(axis=0))) or 1.0
         step = max(1, len(lod_tris) // MAX_SAMPLES)

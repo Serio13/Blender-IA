@@ -42,7 +42,10 @@ tools/export_style_report.py   informe completo de la escena (uso puntual; pesad
 8. **Control de calidad de LODs** (`core/quality.py`): por triángulo del LOD se mide la distancia a la
    superficie original y el error de UV frente a la UV interpolada del original. p95 > 2 % de UV o > 1,2 % de
    forma genera un AVISO. Sirve de verificación sin capturas.
-9. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
+9. **Capas UV** (`meshutil.order_uv_layers`): Unity usa la primera capa del FBX; se pone primero la capa de las
+   texturas (nodo UV Map si existe, si no la de render). Antes de la 0.1.2 se exportaba el orden original y los
+   assets de dos capas salian en mosaico en Unity. `--drop-uv2` conserva esa capa, no la primera por azar.
+10. Cambiar el espacio de color de una imagen *después* de rellenar sus píxeles los pone a cero (solo
    afecta a imágenes generadas, no a PNG empaquetados); se fija antes.
 
 ## Decisiones

@@ -141,9 +141,10 @@ def _unity_name(asset, label, level, with_lod):
     return "%s_LOD%d" % (base, level) if with_lod else base
 
 
-def _build_hierarchy(asset, levels, opts, tmp, tmp_col, anchor, export_mat):
+def _build_hierarchy(asset, levels, opts, tmp, tmp_col, anchor, export_mat, uv_orders):
     """Copias normalizadas (ancla en el origen, escala aplicada) con nodos aptos para Unity."""
     anchor_inv = anchor.inverted()
+    uv_name = textures.render_uv_name([p.obj for p in asset.parts])
     with_lod = len(levels) > 1
     grouped = opts.layout == "grouped" and not asset.single
 
@@ -191,8 +192,9 @@ def _build_hierarchy(asset, levels, opts, tmp, tmp_col, anchor, export_mat):
             for i, m in enumerate(list(mesh.materials)):
                 if m is not None:
                     mesh.materials[i] = unity_material(m, i)
-            if not opts.keep_uv2:
-                lods.drop_extra_uvs(mesh)
+            # Unity usa SIEMPRE la primera capa UV: debe ser la que usan las texturas (no la primera por azar).
+            uv_first = meshutil.order_uv_layers(mesh, uv_name, keep_extra=opts.keep_uv2)
+            uv_orders[part.obj.name] = [layer.name for layer in mesh.uv_layers]
             name = _unity_name(asset.name, part.label if not asset.single else "", level.index, with_lod)
             tmp.claim(bpy.data.meshes, name)
             tmp.claim(bpy.data.objects, name)
@@ -312,7 +314,8 @@ def export_asset(asset, out_dir, lod_result, opts):
     try:
         anchor, pivot_shift = _anchor_for_export(asset, lod_result.levels[0].objects, opts.pivot)
         export_mat = _export_material("M_%s" % asset.name, pkg / "Textures", tex_files, tmp)
-        out_nodes = _build_hierarchy(asset, lod_result.levels, opts, tmp, tmp_col, anchor, export_mat)
+        uv_orders = {}
+        out_nodes = _build_hierarchy(asset, lod_result.levels, opts, tmp, tmp_col, anchor, export_mat, uv_orders)
         collider = None
         if opts.collider != "none":
             collider = _add_collider(asset, out_nodes, opts, tmp, tmp_col)
@@ -345,6 +348,8 @@ def export_asset(asset, out_dir, lod_result, opts):
         "pivot_shift_m_blender_xyz": meshutil.r3(pivot_shift),
         "size_m_blender_xyz": meshutil.r3(hi - lo),
         "uv_layers": uv_layers,
+        "uv_order": next(iter(uv_orders.values()), []),
+        "uv_render": (next(iter(uv_orders.values()), [None]) or [None])[0],
         "lods": [dict({"level": lv.index, "tris": lv.tris, "verts": lv.verts},
                       **({"dev_p95": lv.quality["dev_p95"], "uv_p95": lv.quality["uv_p95"]} if lv.quality else {}))
                  for lv in lod_result.levels],
