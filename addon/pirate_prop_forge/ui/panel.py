@@ -106,6 +106,8 @@ class PF_PT_ai(bpy.types.Panel):
                              "3) Vuelve a Blender y pulsa Iniciar.")
             box.operator("pf.ai_open_installer", icon="FILE_FOLDER")
         row = lay.row(align=True)
+        if running and st.phase == "starting":
+            draw_result(lay, "Arrancando el motor (la primera vez importar PyTorch tarda 1-2 min)...\n" + (st.client.stderr_text(3) if st.client else ""), max_lines=6)
         if running:
             row.label(text={"starting": "Arrancando...", "generating": "Generando", "postprocess": "Normalizando",
                             "error": "Error"}.get(st.phase, "Motor listo"), icon="CHECKMARK" if st.phase == "idle" else "TIME")

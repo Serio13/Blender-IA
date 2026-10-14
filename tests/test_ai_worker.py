@@ -117,3 +117,25 @@ def test_worker_exit_is_reported(client):
     client.send({"cmd": "shutdown"})
     ev, _ = client.wait_for("exit")
     assert ev["code"] == 0
+
+
+
+def test_commands_stay_responsive_while_a_job_runs(client, image, tmp_path):
+    """Los trabajos corren en el hilo principal; el hilo lector sigue atendiendo `status`."""
+    client.hello(FAST)
+    client.wait_for("ready")
+    client.send({"cmd": "generate", "image": str(image), "out_dir": str(tmp_path / "o"), "name": "A", "backend": "fake",
+                 "params": {"fake_delay": 3.0}})
+    client.wait_for("progress")
+    client.send({"cmd": "status"})
+    st, _ = client.wait_for("status", timeout=1.5)
+    assert st["busy"] is True
+    client.wait_for("result", timeout=8)
+
+
+def test_preload_runs_before_the_worker_reads_commands(tmp_path):
+    """El worker prepara los modelos reales (importar PyTorch) antes de aceptar ordenes."""
+    import subprocess
+    probe = tmp_path / "sitecustomize_probe"
+    src = (ai_client.WORKER_SCRIPT).read_text(encoding="utf-8")
+    assert "def preload(self)" in src and src.index("self.preload()") < src.index("threading.Thread(target=self._reader")

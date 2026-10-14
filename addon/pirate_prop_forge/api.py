@@ -161,7 +161,7 @@ def ai_generate(images, names=None, backend="sf3d", python="", cooldown_seconds=
     try:
         cli.start()
         cli.hello({"min_seconds": cooldown_seconds})
-        ready, _ = cli.wait_for("ready", timeout=120)
+        ready, _ = cli.wait_for("ready", timeout=600)
         state = ready["backends"].get(backend, {})
         if not state.get("available"):
             raise PFError("modelo '%s' no disponible: %s" % (backend, state.get("reason", "?")))

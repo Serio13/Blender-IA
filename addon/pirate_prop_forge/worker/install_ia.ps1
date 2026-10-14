@@ -9,7 +9,7 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Base | Out-Null
 Start-Transcript -Path (Join-Path $Base "install.log") -Force | Out-Null
 
-Write-Host "Instalador de Prop Forge, version 0.2.5 (carpeta: $Here)" -ForegroundColor Green
+Write-Host "Instalador de Prop Forge, version 0.2.6 (carpeta: $Here)" -ForegroundColor Green
 function Paso($n, $texto) { Write-Host ""; Write-Host ("[{0}/8] {1}" -f $n, $texto) -ForegroundColor Cyan }
 function Falla($texto) { Write-Host ""; Write-Host ("ERROR: " + $texto) -ForegroundColor Red; Write-Host "Registro: $Base\install.log"; Stop-Transcript | Out-Null; Read-Host "Pulsa Enter para cerrar"; exit 1 }
 function Ejecuta($exe, $argumentos) {

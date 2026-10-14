@@ -49,6 +49,11 @@ class Backend(_Base):
                 return False, "falta el modulo '%s' (ejecuta el instalador de IA)" % mod
         return True, ""
 
+    def preload(self):
+        import torch  # noqa: F401
+        from sf3d.system import SF3D  # noqa: F401
+        _cpu_fallback_for_baker()
+
     def _load(self, progress):
         if self.model is not None:
             return

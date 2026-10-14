@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "pirate_prop_forge"
-version = "0.2.5"
+version = "0.2.6"
 name = "Pirate Prop Forge"
 tagline = "IA local (imagen a malla), normalizacion para Unity, materiales PBR, LODs y exportacion"
 maintainer = "Serio13 <latinoscrewv@gmail.com>"

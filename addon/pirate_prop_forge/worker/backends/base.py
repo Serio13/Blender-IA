@@ -10,6 +10,9 @@ class Backend:
         """(ok, motivo). Comprueba dependencias sin cargar modelos."""
         return True, ""
 
+    def preload(self):
+        """Importaciones pesadas (PyTorch...). Se llama en el hilo principal antes de aceptar ordenes."""
+
     def generate(self, image_path, out_path, params, progress, cancelled):
         """Escribe la malla en out_path. progress(fraccion, texto); cancelled() -> bool.
 

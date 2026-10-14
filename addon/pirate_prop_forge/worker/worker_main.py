@@ -7,6 +7,7 @@ stdout queda reservado al protocolo; todo lo demas (prints de librerias) se redi
 import faulthandler
 import importlib.util
 import os
+import queue
 import sys
 import threading
 import time
@@ -47,7 +48,8 @@ class Worker:
         self.cooldown = cooldown_mod.Cooldown()
         self.default_backend = default_backend
         self.instances = {}
-        self.job = None               # (id, thread)
+        self.job = None               # id del trabajo en curso o en cola
+        self.jobs = queue.Queue()     # los trabajos se ejecutan en el hilo PRINCIPAL (PyTorch/DLL lo prefieren)
         self.cancel_flag = threading.Event()
         self.running = True
         self._cd_thread = None
@@ -107,8 +109,9 @@ class Worker:
             send(protocol.error(jid, "bad_command", "orden desconocida: %r" % cmd))
 
     def start_job(self, msg):
+        """Valida y encola (hilo lector). El trabajo lo ejecuta el hilo principal."""
         jid = msg.get("id")
-        if self.job is not None and self.job[1].is_alive():
+        if self.job is not None:
             return send(protocol.error(jid, "busy", "ya hay una generacion en curso"))
         st = self.cooldown.status()
         if not st.ready:
@@ -119,9 +122,8 @@ class Worker:
         if name not in backends.REGISTRY:
             return send(protocol.error(jid, "bad_backend", "backend desconocido: %s" % name))
         self.cancel_flag.clear()
-        t = threading.Thread(target=self.run_job, args=(jid, name, msg), daemon=True)
-        self.job = (jid, t)
-        t.start()
+        self.job = jid
+        self.jobs.put((jid, name, msg))
 
     def run_job(self, jid, name, msg):
         t0 = time.time()
@@ -178,7 +180,7 @@ class Worker:
             self.cooldown.job_finished()                 # la pausa cuenta desde el fin (tambien si fallo)
             self._announce_cooldown()
 
-    def loop(self):
+    def _reader(self):
         for line in sys.stdin:
             msg = protocol.decode(line)
             if msg is None:
@@ -191,6 +193,42 @@ class Worker:
                 break
         self.running = False
         self.cancel_flag.set()
+        self.jobs.put(None)
+
+    def preload(self):
+        """Importa PyTorch y el modelo ANTES de leer ordenes, en el hilo principal y sin otros hilos activos:
+        asi la primera generacion arranca al instante y el registro dice donde se atasca si algo falla."""
+        faulthandler.dump_traceback_later(120, repeat=True, file=sys.stderr)
+        try:
+            for name in backends.REGISTRY:
+                if name == "fake":
+                    continue
+                be = self.backend(name)
+                if not be.available()[0]:
+                    continue
+                print("[worker] preparando %s (importar PyTorch la primera vez tarda 1-2 min)..." % name, file=sys.stderr, flush=True)
+                t = time.time()
+                try:
+                    be.preload()
+                except Exception as exc:                 # noqa: BLE001
+                    print("[worker] %s no se pudo preparar: %s: %s" % (name, type(exc).__name__, exc), file=sys.stderr, flush=True)
+                else:
+                    print("[worker] %s listo (%.0f s)" % (name, time.time() - t), file=sys.stderr, flush=True)
+        finally:
+            faulthandler.cancel_dump_traceback_later()
+
+    def loop(self):
+        self.preload()
+        threading.Thread(target=self._reader, daemon=True).start()
+        while self.running or not self.jobs.empty():
+            try:
+                item = self.jobs.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            if item is None:
+                break
+            self.run_job(*item)
+        self.running = False
 
 
 def main(argv=None):
