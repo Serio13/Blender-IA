@@ -8,6 +8,33 @@ from . import _common
 from .base import Backend as _Base, JobCancelled
 
 
+def _cpu_fallback_for_baker():
+    """texture_baker se compila solo para CPU en Windows (sin CUDA Toolkit): si la operacion no existe para CUDA,
+    se ejecuta en CPU y el resultado vuelve a la GPU. Sin efecto si hay version CUDA."""
+    import torch
+    from texture_baker.baker import TextureBaker
+    if getattr(TextureBaker, "_pf_patched", False):
+        return
+
+    def wrap(name):
+        original = getattr(TextureBaker, name)
+
+        def patched(self, *args, **kwargs):
+            try:
+                return original(self, *args, **kwargs)
+            except (RuntimeError, NotImplementedError) as exc:
+                if "backend" not in str(exc) and "CUDA" not in str(exc):
+                    raise
+                dev = next((a.device for a in args if isinstance(a, torch.Tensor)), None)
+                cpu_args = [a.cpu() if isinstance(a, torch.Tensor) else a for a in args]
+                out = original(self, *cpu_args, **kwargs)
+                return out.to(dev) if dev is not None and isinstance(out, torch.Tensor) else out
+        setattr(TextureBaker, name, patched)
+    wrap("rasterize")
+    wrap("interpolate")
+    TextureBaker._pf_patched = True
+
+
 class Backend(_Base):
     name = "sf3d"
     output_format = "glb"
@@ -27,6 +54,7 @@ class Backend(_Base):
             return
         import torch
         from sf3d.system import SF3D
+        _cpu_fallback_for_baker()
         progress(0.05, "cargando modelo (la primera vez descarga ~1 GB)")
         device = _common.pick_device()
         self.device = device

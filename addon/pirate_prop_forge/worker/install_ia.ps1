@@ -74,7 +74,11 @@ if (-not $tieneVC) {
         winget install -e --id Microsoft.VisualStudio.2022.BuildTools --accept-package-agreements --accept-source-agreements --override "--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
     } else { Falla "Sin Build Tools no se puede compilar texture_baker/uv_unwrapper. Instala 'Build Tools para Visual Studio' (carga de trabajo C++) y repite." }
 }
-Ejecuta $Py @("-m", "pip", "install", (Join-Path $Sf3d "texture_baker"), (Join-Path $Sf3d "uv_unwrapper"))
+# Sin aislamiento: el compilador necesita ver el torch ya instalado. Version CPU de texture_baker (no exige CUDA Toolkit);
+# el plugin ejecuta ese paso en CPU, lo que cuesta solo unos segundos por malla.
+$env:USE_CUDA = "0"; $env:USE_NATIVE_ARCH = "0"
+Ejecuta $Py @("-m", "pip", "install", "--no-build-isolation", (Join-Path $Sf3d "texture_baker"))
+Ejecuta $Py @("-m", "pip", "install", "--no-build-isolation", (Join-Path $Sf3d "uv_unwrapper"))
 # hace visible el paquete sf3d sin instalarlo
 $site = & $Py -c "import sysconfig;print(sysconfig.get_paths()['purelib'])"
 Set-Content -Path (Join-Path $site "pf_sf3d.pth") -Value $Sf3d -Encoding ASCII
