@@ -24,6 +24,10 @@ def env_file():
     return Path(base) / "PiratePropForge" / "worker_env.json"
 
 
+def log_file():
+    return env_file().parent / "worker.log"
+
+
 def find_python(configured=""):
     """Python del entorno de IA: el configurado en preferencias o el que dejo el instalador."""
     if configured:
@@ -56,6 +60,11 @@ class AIClient:
         cmd = [self.python, "-u", self.script]
         if self.backend:
             cmd += ["--backend", self.backend]
+        try:                                       # registro nuevo en cada arranque
+            log_file().parent.mkdir(parents=True, exist_ok=True)
+            log_file().write_text("", encoding="utf-8")
+        except OSError:
+            pass
         flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
         self.proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                      env=self.env, text=True, encoding="utf-8", errors="replace", bufsize=1,
@@ -73,8 +82,18 @@ class AIClient:
         self.events.put({"event": "exit", "code": proc.poll()})
 
     def _read_err(self, proc):
+        try:
+            log = open(log_file(), "a", encoding="utf-8", errors="replace")
+        except OSError:
+            log = None
         for line in proc.stderr:
             self.stderr_tail.append(line.rstrip())
+            if log:
+                try:
+                    log.write(line)
+                    log.flush()
+                except OSError:
+                    log = None
 
     def alive(self):
         return self.proc is not None and self.proc.poll() is None

@@ -4,6 +4,7 @@ Se ejecuta con el Python del entorno de IA, no con el de Blender:
     python worker_main.py [--backend sf3d]
 stdout queda reservado al protocolo; todo lo demas (prints de librerias) se redirige a stderr.
 """
+import faulthandler
 import importlib.util
 import os
 import sys
@@ -136,8 +137,21 @@ class Worker:
             stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in (msg.get("name") or "asset"))
             out_path = os.path.join(out_dir, "%s_raw.%s" % (stem, be.output_format))
 
+            last = {"frac": 0.0, "text": "importando PyTorch y el modelo (la primera vez tarda)"}
+            t_start = time.time()
+
             def progress(frac, text=""):
+                last["frac"], last["text"] = float(frac), text
                 send({"event": "progress", "id": jid, "fraction": round(float(frac), 3), "text": text})
+
+            def heartbeat():            # el panel sigue viendo que el motor esta vivo aunque una fase sea larga
+                while not stop_beat.wait(2.0):
+                    send({"event": "progress", "id": jid, "fraction": round(last["frac"], 3),
+                          "text": "%s (%d s)" % (last["text"], time.time() - t_start)})
+            stop_beat = threading.Event()
+            threading.Thread(target=heartbeat, daemon=True).start()
+            faulthandler.dump_traceback_later(150, repeat=True, file=sys.stderr)   # si se cuelga, deja la pila en el registro
+            progress(0.0, last["text"])
 
             extra = be.generate(image, out_path, msg.get("params") or {}, progress, self.cancel_flag.is_set)
             send({"event": "result", "id": jid, "backend": name, "mesh": out_path, "format": be.output_format,
@@ -150,6 +164,11 @@ class Worker:
             code = "oom" if "out of memory" in str(exc).lower() else "failed"
             send(protocol.error(jid, code, "%s: %s" % (type(exc).__name__, exc), detail=traceback.format_exc()[-1500:]))
         finally:
+            faulthandler.cancel_dump_traceback_later()
+            try:
+                stop_beat.set()
+            except NameError:
+                pass
             self.job = None
             if msg.get("unload_after"):
                 try:

@@ -68,9 +68,11 @@ def check_torch():
     cap = torch.cuda.get_device_capability(0)
     arch = "sm_%d%d" % cap
     archs = torch.cuda.get_arch_list()
-    (ok if arch in archs else fail)("arquitectura %s %s en esta version de PyTorch (%s)" % (
-        arch, "incluida" if arch in archs else "NO incluida", " ".join(archs)),
-        "usa PyTorch 2.6 con CUDA 12.4 o 12.6 (las versiones nuevas quitan GPUs Pascal)")
+    msg = "arquitectura %s %s en esta version de PyTorch (%s)" % (arch, "incluida" if arch in archs else "NO incluida", " ".join(archs))
+    if arch in archs:
+        ok(msg)
+    else:
+        fail(msg, "usa PyTorch 2.6 con CUDA 12.4 o 12.6 (las versiones nuevas quitan GPUs Pascal)")
     ok("bf16 %s -> %s" % ("si" if cap[0] >= 8 else "no", "rapido" if cap[0] >= 8 else "se usara FP32 (correcto en GTX 1080 Ti)"))
     try:
         import time
@@ -96,6 +98,21 @@ def check_modules():
     else:
         ok("modulos de SF3D completos")
     (ok if has("tsr") else aviso)("TripoSR (tsr) " + ("instalado" if has("tsr") else "no instalado (opcional)"))
+
+
+def check_sf3d_import():
+    """Importa SF3D de verdad (carga torch, texture_baker, uv_unwrapper...): detecta DLL rotas y mide el tiempo."""
+    if not (has("torch") and has("sf3d")):
+        return
+    import time
+    t = time.time()
+    try:
+        from sf3d.system import SF3D  # noqa: F401
+        import texture_baker, uv_unwrapper  # noqa: F401
+    except Exception as exc:                               # noqa: BLE001
+        return fail("no se puede importar SF3D: %s: %s" % (type(exc).__name__, exc),
+                    "copia este mensaje completo")
+    ok("SF3D se importa bien (%.0f s; la primera vez tarda mas por el antivirus)" % (time.time() - t))
 
 
 def hf_token():
@@ -135,7 +152,7 @@ def check_disk():
 
 
 def main():
-    for check in (check_python, check_smi, check_torch, check_modules, check_model, check_disk):
+    for check in (check_python, check_smi, check_torch, check_modules, check_sf3d_import, check_model, check_disk):
         try:
             check()
         except Exception as exc:                           # noqa: BLE001

@@ -193,5 +193,18 @@ class PF_OT_ai_open_installer(_AIOperator):
         bpy.ops.wm.path_open(filepath=str(folder))
 
 
-classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile, PF_OT_ai_open_installer,
+class PF_OT_ai_open_log(_AIOperator):
+    bl_idname = "pf.ai_open_log"
+    bl_label = "Ver registro"
+    bl_description = "Abre el registro del motor de IA (worker.log); util para diagnosticar si algo se atasca"
+
+    def run(self, context, pf, prefs):
+        from ..core import ai_client
+        path = ai_client.log_file()
+        if not path.exists():
+            raise PFError("todavia no hay registro: inicia el motor de IA primero")
+        bpy.ops.wm.path_open(filepath=str(path))
+
+
+classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile, PF_OT_ai_open_installer, PF_OT_ai_open_log,
            PF_OT_ai_start, PF_OT_ai_stop, PF_OT_ai_generate, PF_OT_ai_cancel, PF_OT_ai_import, PF_OT_ai_doctor)

@@ -154,6 +154,9 @@ class PF_PT_ai(bpy.types.Panel):
         why = ai_session.blocked_reason()
         if st.phase == "generating":
             _progress(lay, st.progress, "%s %d%%" % (st.text or "generando", st.progress * 100))
+            tail = st.client.stderr_text(3) if st.client else ""
+            if tail:
+                draw_result(lay, tail, max_lines=5)
             lay.operator("pf.ai_cancel", icon="CANCEL")
         elif st.cooldown_left() > 0 and running:
             total = max(5.0, (prefs.cooldown_seconds if prefs else 10.0))
@@ -172,7 +175,9 @@ class PF_PT_ai(bpy.types.Panel):
         sub.label(text="Sin IA: normalizar una malla")
         sub.prop(pf, "ai_mesh")
         sub.operator("pf.ai_import", icon="IMPORT")
-        lay.operator("pf.ai_doctor", icon="QUESTION")
+        row = lay.row(align=True)
+        row.operator("pf.ai_doctor", icon="QUESTION")
+        row.operator("pf.ai_open_log", icon="TEXT")
         if st.doctor_text:
             draw_result(lay, st.doctor_text, max_lines=24)
 

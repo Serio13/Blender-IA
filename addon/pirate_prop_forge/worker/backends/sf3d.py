@@ -52,6 +52,7 @@ class Backend(_Base):
     def _load(self, progress):
         if self.model is not None:
             return
+        progress(0.01, "importando PyTorch y SF3D (la primera vez tarda 1-2 min)")
         import torch
         from sf3d.system import SF3D
         _cpu_fallback_for_baker()
