@@ -90,6 +90,9 @@ def generate(image, name, backend, opts, params=None, unload_after=False, out_di
         raise PFError(reason)
     if not Path(image).is_file():
         raise PFError("no existe la imagen: %s" % image)
+    info = STATE.backends.get(backend)
+    if info is not None and not info.get("available", True):
+        raise PFError("el modelo '%s' no esta instalado (%s). Elige otro en 'Modelo'" % (backend, info.get("reason", "")))
     out_dir = out_dir or tempfile.mkdtemp(prefix="pf_ai_")
     jid = STATE.client.generate(image, out_dir, name, backend, params, unload_after)
     STATE.job = {"id": jid, "name": name, "opts": opts, "backend": backend, "t0": time.monotonic()}

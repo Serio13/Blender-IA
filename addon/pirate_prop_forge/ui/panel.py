@@ -125,6 +125,9 @@ class PF_PT_ai(bpy.types.Panel):
         if meta:
             blocked = prefs is not None and prefs.commercial_only and not meta["commercial_ok"]
             col.label(text="Licencia: %s" % meta["license"], icon="ERROR" if blocked else "CHECKMARK")
+        info = st.backends.get(pf.ai_backend)
+        if running and info is not None and not info.get("available", True):
+            draw_result(lay.box(), "Este modelo no esta instalado: %s. Elige 'Stable Fast 3D'." % info.get("reason", ""))
 
         box = lay.box()
         box.label(text="Resultado")

@@ -134,3 +134,18 @@ def test_panel_guides_to_installer_when_no_python(monkeypatch):
         assert hasattr(bpy.ops.pf, "ai_open_installer")
     finally:
         pf.unregister()
+
+
+def test_unavailable_model_is_refused_immediately_and_marked(registered, tmp_path):
+    img = tmp_path / "r.png"
+    img.write_bytes(b"x")
+    bpy.ops.pf.ai_start()
+    assert pump_until(lambda: ai_session.STATE.phase == "idle")
+    s = bpy.context.scene.pf
+    s.ai_image, s.ai_backend = str(img), "sf3d"          # sin torch en el entorno de pruebas
+    with pytest.raises(RuntimeError, match="no esta instalado"):
+        bpy.ops.pf.ai_generate()
+    from pirate_prop_forge.ui import props
+    labels = [i[1] for i in props._backend_items(s, bpy.context)]
+    assert any("NO INSTALADO" in l for l in labels if "Stable" in l)
+    assert any(c[0] == "label" for c in draw(bpy.context))

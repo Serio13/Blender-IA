@@ -10,6 +10,27 @@ def _preset_items():
             for k, v in PRESETS.items()]
 
 
+_BACKENDS = (
+    ("sf3d", "Stable Fast 3D", "Malla con UV y texturas PBR. Licencia Stability Community (gratis comercial < 1 M USD/año)"),
+    ("triposr", "TripoSR (opcional)", "Malla con color por vertice. Licencia MIT. Hay que instalarlo aparte"),
+    ("fake", "Prueba (sin IA)", "Barril de prueba para comprobar el plugin; no usar en produccion"),
+)
+_items_cache = []
+
+
+def _backend_items(self, context):
+    """Marca como 'no instalado' los modelos que el motor de IA ha dicho que no puede usar."""
+    from ..core import ai_session
+    known = ai_session.STATE.backends
+    _items_cache.clear()
+    for key, label, desc in _BACKENDS:
+        info = known.get(key)
+        if info is not None and not info.get("available", True):
+            label += " - NO INSTALADO"
+        _items_cache.append((key, label, desc))
+    return _items_cache
+
+
 class PF_Settings(bpy.types.PropertyGroup):
     asset_name: StringProperty(name="Nombre", description="Vacio = automatico (solo con un unico asset)")
     preset: EnumProperty(name="Preset LOD", items=_preset_items(), default="estandar")
@@ -48,10 +69,8 @@ class PF_Settings(bpy.types.PropertyGroup):
     ai_image: StringProperty(name="Imagen", subtype="FILE_PATH", description="Foto o dibujo del objeto (fondo liso si es posible)")
     ai_name: StringProperty(name="Nombre", default="Prop_ia_V2",
                             description="Familia_variante_V2; la pieza se llama <Nombre>_malla_BAKED")
-    ai_backend: EnumProperty(name="Modelo", default="sf3d", items=[
-        ("sf3d", "Stable Fast 3D", "Malla con UV y texturas PBR. Licencia Stability Community (gratis comercial < 1 M USD/año)"),
-        ("triposr", "TripoSR", "Malla con color por vertice. Licencia MIT"),
-        ("fake", "Prueba (sin IA)", "Barril de prueba para comprobar el plugin; no usar en produccion")])
+    ai_backend: EnumProperty(name="Modelo", items=_backend_items,
+                             description="Los marcados como no instalados no se pueden usar hasta instalarlos")
     ai_category: EnumProperty(name="Categoria", default="barril",
                               items=[(k, k.capitalize(), "%s m de alto" % v[0] if v[0] else "Sin escala automatica")
                                      for k, v in postprocess.CATEGORIES.items()])
