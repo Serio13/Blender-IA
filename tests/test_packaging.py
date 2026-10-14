@@ -57,3 +57,11 @@ def test_zip_ships_the_worker_and_it_runs_from_the_packaged_layout(tmp_path):
     assert '"event":"ready"' in out.stdout, out.stderr
     doc = subprocess.run([sys.executable, str(dest / "worker" / "doctor.py")], capture_output=True, text=True, timeout=60)
     assert "VEREDICTO" in doc.stdout
+
+
+def test_installer_banner_matches_plugin_version():
+    """El instalador imprime su version: asi se ve si se ejecuta una copia antigua."""
+    from pirate_prop_forge.core.version import VERSION
+    ps1 = (ROOT / "addon" / "pirate_prop_forge" / "worker" / "install_ia.ps1").read_text(encoding="utf-8")
+    assert "version %s" % VERSION in ps1
+    assert "--no-build-isolation" in ps1
