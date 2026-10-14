@@ -9,7 +9,7 @@ $Here = Split-Path -Parent $MyInvocation.MyCommand.Path
 New-Item -ItemType Directory -Force -Path $Base | Out-Null
 Start-Transcript -Path (Join-Path $Base "install.log") -Force | Out-Null
 
-Write-Host "Instalador de Prop Forge, version 0.2.6 (carpeta: $Here)" -ForegroundColor Green
+Write-Host "Instalador de Prop Forge, version 0.2.7 (carpeta: $Here)" -ForegroundColor Green
 function Paso($n, $texto) { Write-Host ""; Write-Host ("[{0}/8] {1}" -f $n, $texto) -ForegroundColor Cyan }
 function Falla($texto) { Write-Host ""; Write-Host ("ERROR: " + $texto) -ForegroundColor Red; Write-Host "Registro: $Base\install.log"; Stop-Transcript | Out-Null; Read-Host "Pulsa Enter para cerrar"; exit 1 }
 function Ejecuta($exe, $argumentos) {
@@ -62,7 +62,7 @@ if (-not (Test-Path (Join-Path $Sf3d "sf3d"))) { Falla "La descarga de SF3D no t
 Paso 6 "Instalando dependencias (rembg en CPU para dejar la GPU libre)"
 $deps = @("einops==0.7.0", "jaxtyping==0.2.31", "omegaconf==2.3.0", "transformers==4.42.3", "open_clip_torch==2.24.0",
           "trimesh==4.4.1", "numpy==1.26.4", "huggingface-hub==0.23.4", "rembg==2.0.57", "onnxruntime", "pynanoinstantmeshes==0.0.3",
-          "gpytoolbox==0.2.0", "pillow", "ninja")
+          "gpytoolbox==0.2.0", "pillow", "ninja", "diffusers==0.30.3", "accelerate")
 Ejecuta $Py (@("-m", "pip", "install") + $deps)
 # Compilador de C++ para texture_baker y uv_unwrapper
 $vsw = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"

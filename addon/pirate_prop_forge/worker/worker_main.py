@@ -32,6 +32,7 @@ def _load_shared(name):
 protocol = _load_shared("protocol")
 cooldown_mod = _load_shared("cooldown")
 import backends  # noqa: E402
+import txt2img  # noqa: E402
 from backends.base import JobCancelled  # noqa: E402
 
 _lock = threading.Lock()
@@ -95,7 +96,7 @@ class Worker:
             if isinstance(msg.get("cooldown"), dict):
                 self.cooldown.policy = cooldown_mod.Policy.from_dict(msg["cooldown"])
             send({"event": "ready", "id": jid, "protocol": protocol.PROTOCOL_VERSION, "python": sys.version.split()[0],
-                  "backends": self.availability(), "gpu": self.gpu(), "cooldown": self.cooldown.status().as_dict()})
+                  "backends": self.availability(), "image_models": txt2img.info(), "gpu": self.gpu(), "cooldown": self.cooldown.status().as_dict()})
         elif cmd == "status":
             send({"event": "status", "id": jid, "busy": self.job is not None, "gpu": self.gpu(),
                   "cooldown": self.cooldown.status().as_dict()})
@@ -133,18 +134,22 @@ class Worker:
             if not ok:
                 return send(protocol.error(jid, "unavailable", why))
             image, out_dir = msg.get("image"), msg.get("out_dir")
-            if not image or not os.path.isfile(image):
-                return send(protocol.error(jid, "bad_input", "imagen no encontrada: %s" % image))
+            params = dict(msg.get("params") or {})
+            prompt = (params.pop("prompt", "") or "").strip()
+            seed = params.pop("seed", 0)
+            image_model = params.pop("image_model", "sd15")
             os.makedirs(out_dir, exist_ok=True)
             stem = "".join(c if c.isalnum() or c in "-_" else "_" for c in (msg.get("name") or "asset"))
             out_path = os.path.join(out_dir, "%s_raw.%s" % (stem, be.output_format))
 
             last = {"frac": 0.0, "text": "importando PyTorch y el modelo (la primera vez tarda)"}
             t_start = time.time()
+            span = [0.0, 1.0]                  # tramo de la barra que ocupa la fase actual
 
             def progress(frac, text=""):
-                last["frac"], last["text"] = float(frac), text
-                send({"event": "progress", "id": jid, "fraction": round(float(frac), 3), "text": text})
+                frac = span[0] + (span[1] - span[0]) * float(frac)
+                last["frac"], last["text"] = frac, text
+                send({"event": "progress", "id": jid, "fraction": round(frac, 3), "text": text})
 
             def heartbeat():            # el panel sigue viendo que el motor esta vivo aunque una fase sea larga
                 while not stop_beat.wait(2.0):
@@ -155,7 +160,20 @@ class Worker:
             faulthandler.dump_traceback_later(150, repeat=True, file=sys.stderr)   # si se cuelga, deja la pila en el registro
             progress(0.0, last["text"])
 
-            extra = be.generate(image, out_path, msg.get("params") or {}, progress, self.cancel_flag.is_set)
+            if prompt:                                       # texto -> imagen de referencia
+                t2i = txt2img.get(image_model)
+                ok2, why2 = t2i.available()
+                if not ok2:
+                    return send(protocol.error(jid, "unavailable", "texto a imagen no disponible: " + why2))
+                image = os.path.join(out_dir, "%s_ref.png" % stem)
+                span[:] = [0.0, 0.3]
+                info = t2i.generate(prompt, seed, image, progress, self.cancel_flag.is_set)
+                span[:] = [0.3, 1.0]
+                send({"event": "image", "id": jid, "path": image, "seed": info.get("seed"), "prompt": info.get("prompt")})
+            elif not image or not os.path.isfile(image):
+                return send(protocol.error(jid, "bad_input", "imagen no encontrada: %s" % image))
+
+            extra = be.generate(image, out_path, params, progress, self.cancel_flag.is_set)
             send({"event": "result", "id": jid, "backend": name, "mesh": out_path, "format": be.output_format,
                   "seconds": round(time.time() - t0, 1), "extra": extra or {}})
         except JobCancelled:

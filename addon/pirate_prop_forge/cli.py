@@ -84,6 +84,7 @@ def build_parser():
         sp.add_argument("--max-tris", type=int, default=0)
         sp.add_argument("--material", default="ia", choices=("ia", "madera", "cuero", "metal", "none"))
         sp.add_argument("--tex-size", type=int, default=1024)
+        sp.add_argument("--smooth", type=int, default=2)
 
     sp = sub.add_parser("ai-import", help="normaliza una malla .obj/.glb ya generada")
     sp.add_argument("--mesh", required=True)
@@ -91,7 +92,9 @@ def build_parser():
     ai_common(sp)
 
     sp = sub.add_parser("ai-generate", help="genera con IA local (una o varias imagenes) y normaliza")
-    sp.add_argument("--image", nargs="+", required=True)
+    sp.add_argument("--image", nargs="+")
+    sp.add_argument("--prompt", nargs="+", help="texto en vez de imagen (uno por asset, entre comillas)")
+    sp.add_argument("--seed", type=int, default=0)
     sp.add_argument("--name", nargs="*")
     sp.add_argument("--backend", default="sf3d")
     sp.add_argument("--python", default="")
@@ -133,11 +136,11 @@ def run(argv):
         out = api.check(args.target, name=args.name)
     elif args.cmd in ("ai-import", "ai-generate"):
         ai = dict(category=args.category, height=args.height, pivot=args.pivot, budget=args.budget, min_tris=args.min_tris,
-                  max_tris=args.max_tris, material=args.material, tex_size=args.tex_size)
+                  max_tris=args.max_tris, material=args.material, tex_size=args.tex_size, smooth=args.smooth)
         if args.cmd == "ai-import":
             out = api.ai_import(args.mesh, args.name, **ai)
         else:
-            out = api.ai_generate(args.image, args.name, backend=args.backend, python=args.python, cooldown_seconds=args.cooldown,
+            out = api.ai_generate(args.image, args.name, prompt=args.prompt, seed=args.seed, backend=args.backend, python=args.python, cooldown_seconds=args.cooldown,
                                   commercial_only=not args.allow_test_models, **ai)
     else:
         out = api.profile(args.out)

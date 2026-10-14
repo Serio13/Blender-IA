@@ -10,6 +10,10 @@ MODELS = {
              "about": "Stable Fast 3D: malla con UV y texturas PBR (~6 GB VRAM). Uso comercial gratis con ingresos "
                       "anuales por debajo de 1 M USD; por encima hay que pedir licencia a Stability AI",
              "url": "https://huggingface.co/stabilityai/stable-fast-3d"},
+    "sd15": {"license": "CreativeML OpenRAIL-M", "commercial_ok": True, "module": "", "kind": "image",
+             "about": "Stable Diffusion 1.5: crea la imagen de referencia a partir de tu texto (~4 GB, ~4 GB VRAM). "
+                      "Uso comercial permitido; no se pueden generar contenidos ilegales o danosos",
+             "url": "https://huggingface.co/stable-diffusion-v1-5/stable-diffusion-v1-5"},
     "triposr": {"license": "MIT", "commercial_ok": True, "module": "triposr",
                 "about": "TripoSR: malla con color por vertice (~6 GB VRAM). Licencia MIT, sin restricciones",
                 "url": "https://github.com/VAST-AI-Research/TripoSR"},

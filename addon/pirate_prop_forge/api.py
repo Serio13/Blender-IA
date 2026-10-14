@@ -122,7 +122,7 @@ def check(target=None, name=None):
     return "\n".join(lines)
 
 
-_AI_KEYS = ("category", "height", "pivot", "budget", "min_tris", "max_tris", "material", "tex_size", "color")
+_AI_KEYS = ("category", "height", "pivot", "budget", "min_tris", "max_tris", "material", "tex_size", "color", "smooth")
 
 
 def ai_import(path, name, **kw):
@@ -136,17 +136,27 @@ def ai_import(path, name, **kw):
     return postprocess.summary(rep)
 
 
-def ai_generate(images, names=None, backend="sf3d", python="", cooldown_seconds=10.0, commercial_only=True,
-                timeout=900.0, params=None, **kw):
+def ai_generate(images=None, names=None, backend="sf3d", python="", cooldown_seconds=10.0, commercial_only=True,
+                timeout=900.0, params=None, prompt=None, seed=0, **kw):
     """Genera con IA local (bloquea hasta terminar; pensado para scripts/Claude Code, no para la interfaz).
 
     `images`: ruta o lista; con varias se generan una tras otra respetando la pausa de enfriamiento.
+    `prompt`: en vez de imagen, un texto (o lista de textos); se dibuja una imagen de referencia con Stable Diffusion local.
     """
     import time
     if commercial_only and not _licenses.commercial_ok(backend):
         raise PFError("'%s' no esta marcado como apto para uso comercial (commercial_only=False para pruebas)" % backend)
+    prompts = [prompt] if isinstance(prompt, str) else list(prompt or [])
+    if prompts:
+        images = [""] * len(prompts)
+        if commercial_only and not _licenses.commercial_ok("sd15"):
+            raise PFError("texto a imagen no es apto para uso comercial")
+    elif images is None:
+        raise PFError("indica images o prompt")
     images = [images] if isinstance(images, str) else list(images)
     names = [names] if isinstance(names, str) else list(names or [])
+    if prompts and not names:
+        raise PFError("con prompt hace falta un nombre por asset (names)")
     if len(names) != len(images):
         names = [Path(i).stem for i in images] if not names else names
     if len(names) != len(images):
@@ -165,10 +175,15 @@ def ai_generate(images, names=None, backend="sf3d", python="", cooldown_seconds=
         state = ready["backends"].get(backend, {})
         if not state.get("available"):
             raise PFError("modelo '%s' no disponible: %s" % (backend, state.get("reason", "?")))
-        for image, name in zip(images, names):
+        for idx, (image, name) in enumerate(zip(images, names)):
+            job_params = dict(params or {})
+            if prompts:
+                job_params.update(prompt=prompts[idx], seed=seed, image_model="fake" if backend == "fake" else "sd15")
             while True:
-                cli.generate(image, out_dir, name, backend)
+                cli.generate(image, out_dir, name, backend, params=job_params)
                 ev, _ = cli.wait_for_any(("result", "error"), timeout=timeout)
+                if ev["event"] == "result":
+                    ev["ref_image"] = next((m.get("path") for m in _ if m.get("event") == "image"), "")
                 if ev["event"] == "result":
                     break
                 if ev.get("code") in ("cooldown", "overheated"):
@@ -178,7 +193,8 @@ def ai_generate(images, names=None, backend="sf3d", python="", cooldown_seconds=
             obj, rep = postprocess.process(ev["mesh"], name, opts)
             meta = _licenses.get(backend) or {}
             obj["pf_source"], obj["pf_license"], obj["pf_commercial_ok"] = backend, meta.get("license", ""), bool(meta.get("commercial_ok"))
-            lines.append("%s (%s, %.0f s)" % (postprocess.summary(rep), backend, ev.get("seconds", 0)))
+            lines.append("%s (%s, %.0f s)%s" % (postprocess.summary(rep), backend, ev.get("seconds", 0),
+                                                 " ref=" + ev["ref_image"] if ev.get("ref_image") else ""))
     finally:
         cli.stop()
     return "\n".join(lines)

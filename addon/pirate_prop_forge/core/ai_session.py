@@ -26,6 +26,9 @@ class State:
     cooldown_reason: str = ""
     temp: float = None
     backends: dict = field(default_factory=dict)
+    image_models: dict = field(default_factory=dict)
+    last_image: str = ""
+    last_prompt: str = ""
     gpu: dict = None
     message: str = ""             # ultimo resultado/aviso para el panel
     doctor_text: str = ""
@@ -88,8 +91,13 @@ def generate(image, name, backend, opts, params=None, unload_after=False, out_di
     reason = blocked_reason()
     if reason:
         raise PFError(reason)
-    if not Path(image).is_file():
+    prompt = ((params or {}).get("prompt") or "").strip()
+    if not prompt and not Path(image).is_file():
         raise PFError("no existe la imagen: %s" % image)
+    if prompt:
+        im = STATE.image_models.get((params or {}).get("image_model", "sd15"))
+        if im is not None and not im.get("available", True):
+            raise PFError("texto a imagen no esta instalado (%s). Vuelve a ejecutar instalar_ia.bat" % im.get("reason", ""))
     info = STATE.backends.get(backend)
     if info is not None and not info.get("available", True):
         raise PFError("el modelo '%s' no esta instalado (%s). Elige otro en 'Modelo'" % (backend, info.get("reason", "")))
@@ -120,12 +128,19 @@ def handle_event(ev):
     kind = ev.get("event")
     if kind == "ready":
         STATE.backends, STATE.gpu = ev.get("backends", {}), ev.get("gpu")
+        STATE.image_models = ev.get("image_models", {})
         cd = ev.get("cooldown") or {}
         if STATE.phase == "starting":
             STATE.phase, STATE.message = "idle", "Motor de IA listo"
         _set_cooldown(cd)
     elif kind == "progress" and STATE.phase == "generating":
         STATE.progress, STATE.text = float(ev.get("fraction", 0.0)), ev.get("text", "")
+    elif kind == "image":
+        STATE.last_image, STATE.last_prompt = ev.get("path", ""), ev.get("prompt", "")
+        try:                                   # deja la imagen creada como referencia visible en el panel
+            bpy.context.scene.pf.ai_last_image = STATE.last_image
+        except Exception:                      # noqa: BLE001
+            pass
     elif kind == "cooldown":
         _set_cooldown(ev)
     elif kind == "cooldown_done":

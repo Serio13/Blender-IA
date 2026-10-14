@@ -75,6 +75,7 @@ def test_generate_operator_end_to_end(registered, tmp_path):
     img = tmp_path / "r.png"
     img.write_bytes(b"x")
     s = bpy.context.scene.pf
+    s.ai_source = "IMAGE"
     s.ai_image, s.ai_name, s.ai_backend, s.ai_category, s.ai_material = str(img), "Barril_ia_V2", "fake", "barril", "none"
     prefs_mod.get = lambda context=None: type("P", (), {"commercial_only": False, "unload_after": False,
                                                         "worker_python": "", "hf_token": "", "policy": lambda self: {"min_seconds": 5, "adaptive": False}})()
@@ -95,6 +96,7 @@ def test_test_only_model_is_blocked_in_commercial_mode(registered, tmp_path, mon
     img = tmp_path / "r.png"
     img.write_bytes(b"x")
     s = bpy.context.scene.pf
+    s.ai_source = "IMAGE"
     s.ai_image, s.ai_backend = str(img), "fake"
     monkeypatch.setattr("pirate_prop_forge.ui.operators.prefs_mod.get",
                         lambda context=None: type("P", (), {"commercial_only": True, "unload_after": False})())
@@ -112,6 +114,7 @@ def test_import_operator_without_ai(registered, tmp_path):
 
 def test_generate_without_worker_fails_clearly(registered, tmp_path):
     s = bpy.context.scene.pf
+    s.ai_source = "IMAGE"
     s.ai_image, s.ai_backend = str(tmp_path / "a.png"), "sf3d"
     with pytest.raises(RuntimeError, match="no esta en marcha"):
         bpy.ops.pf.ai_generate()
@@ -142,6 +145,7 @@ def test_unavailable_model_is_refused_immediately_and_marked(registered, tmp_pat
     bpy.ops.pf.ai_start()
     assert pump_until(lambda: ai_session.STATE.phase == "idle")
     s = bpy.context.scene.pf
+    s.ai_source = "IMAGE"
     s.ai_image, s.ai_backend = str(img), "sf3d"          # sin torch en el entorno de pruebas
     with pytest.raises(RuntimeError, match="no esta instalado"):
         bpy.ops.pf.ai_generate()
@@ -149,3 +153,25 @@ def test_unavailable_model_is_refused_immediately_and_marked(registered, tmp_pat
     labels = [i[1] for i in props._backend_items(s, bpy.context)]
     assert any("NO INSTALADO" in l for l in labels if "Stable" in l)
     assert any(c[0] == "label" for c in draw(bpy.context))
+
+
+def test_text_mode_needs_a_description_then_draws_and_builds(registered, tmp_path):
+    s = bpy.context.scene.pf
+    s.ai_source, s.ai_backend, s.ai_name, s.ai_category, s.ai_material = "TEXT", "fake", "Llave_ia_V2", "llave", "none"
+    prefs_mod_get = prefs_mod.get
+    prefs_mod.get = lambda context=None: type("P", (), {"commercial_only": False, "unload_after": False, "worker_python": "",
+                                                        "hf_token": "", "policy": lambda self: {"min_seconds": 5, "adaptive": False}})()
+    try:
+        assert bpy.ops.pf.ai_start() == {"FINISHED"}
+        assert pump_until(lambda: ai_session.STATE.phase == "idle")
+        with pytest.raises(RuntimeError, match="Describe"):
+            bpy.ops.pf.ai_generate()
+        s.ai_prompt = "old brass pirate key"
+        assert bpy.ops.pf.ai_generate() == {"FINISHED"}
+        assert pump_until(lambda: "Llave_ia_V2_malla_BAKED" in bpy.data.objects)
+        assert s.ai_last_image.endswith("Llave_ia_V2_ref.png") and ai_session.STATE.last_image == s.ai_last_image
+        assert "brass pirate key" in ai_session.STATE.last_prompt and "white background" in ai_session.STATE.last_prompt
+        assert bpy.ops.pf.ai_use_image() == {"FINISHED"} and s.ai_source == "IMAGE" and s.ai_image == s.ai_last_image
+        assert any(c[0] == "operator" and c[1][0] == "pf.ai_use_image" for c in draw(bpy.context))
+    finally:
+        prefs_mod.get = prefs_mod_get

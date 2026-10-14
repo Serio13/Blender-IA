@@ -52,6 +52,26 @@ pf.ai_import("D:/ia/barril.glb", "Barril_ia_V2", category="barril")             
 ```
 CLI: `-- ai-generate --image a.png b.png --name A B --category barril` · `-- ai-import --mesh x.glb --name A`.
 
+## Escribir lo que quieres (texto → imagen → malla)
+
+En **Entrada → Texto** escribes la descripción (mejor en inglés, p. ej. `old brass pirate key, ornate round bow,
+worn, stylized`). El plugin dibuja primero una **imagen de referencia** con Stable Diffusion 1.5 en tu GPU (se ve
+en el panel; si no te gusta, cambia la *Semilla* o el texto) y después crea la malla desde esa imagen. **Usar esta
+imagen** conserva el dibujo y rehace solo la malla. Requiere volver a ejecutar `instalar_ia.bat` una vez (añade
+`diffusers`; la primera generación descarga ~4 GB). Licencia OpenRAIL-M (uso comercial permitido). *No verificado en
+tu PC.*
+
+## Calidad: qué esperar de la IA de una sola imagen
+
+Stable Fast 3D crea la forma completa a partir de **una** imagen: reconoce la silueta, pero la superficie sale
+blanda y algo grumosa, y los detalles finos (grabados, remaches) se pierden. Para mejorar el resultado:
+- Mira el modelo en **Material Preview** (tecla `Z` en la vista 3D): en *Solid* se ve gris y sin textura.
+- Imagen de entrada: un solo objeto, centrado, fondo liso, vista 3/4 y buena luz.
+- **Suavizado** (por defecto 2): alisa la grumosidad sin encoger la forma; súbelo a 3-5 si sigue áspero, 0 para ver la malla cruda.
+- Triángulos: los límites automáticos por categoría son ahora más altos (llave 5000, barril 9000...).
+Los props "premium" hechos con Claude + Blender MCP se construyen pieza a pieza con geometría deliberada; una IA
+local de una imagen no llega a esa precisión: úsala como **base** (forma + textura) que luego se refina.
+
 ## Protección térmica (pilar 5)
 
 Tras cada generación hay una **pausa obligatoria** (por defecto 10 s; configurable 5-15 s en Preferencias) con

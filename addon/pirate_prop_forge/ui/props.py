@@ -66,6 +66,15 @@ class PF_Settings(bpy.types.PropertyGroup):
                               description="Respuestas minimas y sin informacion extra")
 
     # ---- IA local
+    ai_source: EnumProperty(name="Entrada", default="TEXT", items=[
+        ("TEXT", "Texto", "Escribes lo que quieres; el plugin dibuja una imagen de referencia en local y luego crea la malla"),
+        ("IMAGE", "Imagen", "Usas una foto o dibujo tuyo")])
+    ai_prompt: StringProperty(name="Describe", default="", options={"TEXTEDIT_UPDATE"},
+                              description="En ingles funciona mejor. Ej.: old brass pirate key with ornate round bow, worn, stylized")
+    ai_seed: IntProperty(name="Semilla", default=0, min=0, description="0 = distinta cada vez; repite un numero para repetir el resultado")
+    ai_last_image: StringProperty(name="Ultima imagen creada", subtype="FILE_PATH", default="")
+    ai_smooth: IntProperty(name="Suavizado", default=2, min=0, max=10,
+                           description="Pasadas que alisan la superficie sin encoger la forma (0 = malla tal cual sale de la IA)")
     ai_image: StringProperty(name="Imagen", subtype="FILE_PATH", description="Foto o dibujo del objeto (fondo liso si es posible)")
     ai_name: StringProperty(name="Nombre", default="Prop_ia_V2",
                             description="Familia_variante_V2; la pieza se llama <Nombre>_malla_BAKED")

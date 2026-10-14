@@ -139,3 +139,27 @@ def test_preload_runs_before_the_worker_reads_commands(tmp_path):
     probe = tmp_path / "sitecustomize_probe"
     src = (ai_client.WORKER_SCRIPT).read_text(encoding="utf-8")
     assert "def preload(self)" in src and src.index("self.preload()") < src.index("threading.Thread(target=self._reader")
+
+
+def test_text_prompt_draws_reference_image_then_builds_mesh(client, tmp_path):
+    client.hello(FAST)
+    client.wait_for("ready")
+    client.send({"cmd": "generate", "image": "", "out_dir": str(tmp_path / "o"), "name": "Llave", "backend": "fake",
+                 "params": {"prompt": "old brass pirate key", "seed": 7, "image_model": "fake"}})
+    img, seen = client.wait_for("image")
+    assert img["path"].endswith("Llave_ref.png") and img["seed"] == 7 and "white background" in img["prompt"]
+    assert open(img["path"], "rb").read(8) == b"\x89PNG\r\n\x1a\n"
+    res, seen2 = client.wait_for("result")
+    fractions = [m["fraction"] for m in seen + seen2 if m["event"] == "progress"]
+    assert fractions == sorted(fractions) or max(fractions) <= 1.0          # la barra no pasa de 100 %
+    assert res["mesh"].endswith("Llave_raw.obj")
+
+
+def test_text_prompt_with_missing_diffusers_reports_clearly(client, tmp_path):
+    client.hello(FAST)
+    ready, _ = client.wait_for("ready")
+    assert ready["image_models"]["sd15"]["available"] is False and "instalar_ia" in ready["image_models"]["sd15"]["reason"]
+    client.send({"cmd": "generate", "image": "", "out_dir": str(tmp_path / "o"), "name": "L", "backend": "fake",
+                 "params": {"prompt": "key"}})
+    err, _ = client.wait_for("error")
+    assert err["code"] == "unavailable" and "texto a imagen" in err["message"]

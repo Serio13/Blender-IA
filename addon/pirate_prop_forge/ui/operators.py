@@ -94,7 +94,7 @@ class PF_OT_profile(_PFOperator):
 def _ai_options(pf):
     return postprocess.Options(
         category=pf.ai_category, height=pf.ai_height, pivot=pf.ai_pivot, budget=pf.ai_budget, min_tris=pf.ai_min_tris,
-        max_tris=pf.ai_max_tris, material=pf.ai_material, tex_size=int(pf.ai_tex_size),
+        max_tris=pf.ai_max_tris, material=pf.ai_material, tex_size=int(pf.ai_tex_size), smooth=pf.ai_smooth,
         color=tuple(pf.ai_color) if pf.ai_use_color else None).validate()
 
 
@@ -149,9 +149,18 @@ class PF_OT_ai_generate(_AIOperator):
     bl_description = "Genera la malla con IA local y la normaliza (escala real, origen, triangulos, material)"
 
     def run(self, context, pf, prefs):
-        image = bpy.path.abspath(pf.ai_image)
         _check_license(pf.ai_backend, prefs)
-        ai_session.generate(image, pf.ai_name, pf.ai_backend, _ai_options(pf),
+        params = None
+        if pf.ai_source == "TEXT":
+            if not pf.ai_prompt.strip():
+                raise PFError("escribe que quieres en 'Describe' (mejor en ingles)")
+            _check_license("sd15", prefs)
+            params = {"prompt": pf.ai_prompt.strip(), "seed": pf.ai_seed,
+                      "image_model": "fake" if pf.ai_backend == "fake" else "sd15"}
+            image = ""
+        else:
+            image = bpy.path.abspath(pf.ai_image)
+        ai_session.generate(image, pf.ai_name, pf.ai_backend, _ai_options(pf), params=params,
                             unload_after=bool(prefs and prefs.unload_after))
 
 
@@ -193,6 +202,18 @@ class PF_OT_ai_open_installer(_AIOperator):
         bpy.ops.wm.path_open(filepath=str(folder))
 
 
+class PF_OT_ai_use_image(_AIOperator):
+    bl_idname = "pf.ai_use_image"
+    bl_label = "Usar esta imagen"
+    bl_description = "Pasa la imagen creada a 'Imagen' para rehacer la malla sin volver a dibujarla"
+
+    def run(self, context, pf, prefs):
+        if not pf.ai_last_image:
+            raise PFError("todavia no se ha creado ninguna imagen")
+        pf.ai_image = pf.ai_last_image
+        pf.ai_source = "IMAGE"
+
+
 class PF_OT_ai_open_log(_AIOperator):
     bl_idname = "pf.ai_open_log"
     bl_label = "Ver registro"
@@ -206,5 +227,5 @@ class PF_OT_ai_open_log(_AIOperator):
         bpy.ops.wm.path_open(filepath=str(path))
 
 
-classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile, PF_OT_ai_open_installer, PF_OT_ai_open_log,
+classes = (PF_OT_lods, PF_OT_clean, PF_OT_export, PF_OT_check, PF_OT_profile, PF_OT_ai_open_installer, PF_OT_ai_open_log, PF_OT_ai_use_image,
            PF_OT_ai_start, PF_OT_ai_stop, PF_OT_ai_generate, PF_OT_ai_cancel, PF_OT_ai_import, PF_OT_ai_doctor)

@@ -12,12 +12,12 @@ def _licenses():
 
 
 _LIC = _licenses()
-REGISTRY = {name: meta["module"] for name, meta in _LIC.MODELS.items()}
+REGISTRY = {name: meta["module"] for name, meta in _LIC.MODELS.items() if meta.get("kind", "mesh") == "mesh"}
 
 
 def info():
     return {k: {"license": v["license"], "commercial_ok": v["commercial_ok"], "about": v["about"]}
-            for k, v in _LIC.MODELS.items()}
+            for k, v in _LIC.MODELS.items() if v.get("kind", "mesh") == "mesh"}
 
 
 def load(name):

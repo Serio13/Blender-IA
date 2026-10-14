@@ -12,6 +12,7 @@ def register():
 
 
 def unregister():
+    panel.free_previews()
     del bpy.types.Scene.pf
     for cls in reversed(_classes):
         bpy.utils.unregister_class(cls)

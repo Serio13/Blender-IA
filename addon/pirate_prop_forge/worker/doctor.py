@@ -97,6 +97,7 @@ def check_modules():
              "las Build Tools de Visual Studio (C++)")
     else:
         ok("modulos de SF3D completos")
+    (ok if has("diffusers") else aviso)("texto a imagen (diffusers) " + ("instalado" if has("diffusers") else "no instalado: vuelve a ejecutar instalar_ia.bat"))
     (ok if has("tsr") else aviso)("TripoSR (tsr) " + ("instalado" if has("tsr") else "no instalado (opcional)"))
 
 

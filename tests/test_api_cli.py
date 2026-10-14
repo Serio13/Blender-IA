@@ -130,3 +130,21 @@ def test_ai_generate_batch_respects_cooldown(tmp_path, monkeypatch):
     lines = out.splitlines()
     assert len(lines) == 2 and lines[1].startswith("Barril_b_V2_malla_BAKED")
     assert time.time() - t >= 4.5                                   # la segunda espero la pausa de la GPU
+
+
+def test_ai_generate_from_text_returns_reference_image(tmp_path, monkeypatch):
+    import sys
+    from pirate_prop_forge import api
+    from pirate_prop_forge.core import ai_client
+    monkeypatch.setattr(ai_client, "find_python", lambda configured="": sys.executable)
+    out = api.ai_generate(prompt="old brass pirate key", names=["Llave_ia_V2"], backend="fake", commercial_only=False,
+                          cooldown_seconds=5, category="llave", material="none")
+    assert out.startswith("Llave_ia_V2_malla_BAKED") and "ref=" in out and out.rstrip().endswith("_ref.png")
+
+
+def test_ai_generate_prompt_requires_names():
+    from pirate_prop_forge import api
+    from pirate_prop_forge.core.errors import PFError
+    import pytest
+    with pytest.raises(PFError, match="nombre"):
+        api.ai_generate(prompt="x", backend="fake", commercial_only=False)

@@ -14,13 +14,13 @@ from .settings import lod_settings
 
 # categoria: (altura real en metros, maximo de triangulos en modo automatico, minimo recomendado)
 CATEGORIES = {
-    "barril": (0.85, 6000, 800),
-    "cofre": (0.55, 8000, 800),
-    "caja": (0.50, 4000, 400),
-    "llave": (0.14, 2500, 200),
-    "cantimplora": (0.20, 3000, 300),
-    "botella": (0.30, 2500, 300),
-    "personalizado": (None, 8000, 300),
+    "barril": (0.85, 9000, 800),
+    "cofre": (0.55, 10000, 800),
+    "caja": (0.50, 6000, 400),
+    "llave": (0.14, 5000, 200),
+    "cantimplora": (0.20, 6000, 300),
+    "botella": (0.30, 5000, 300),
+    "personalizado": (None, 10000, 300),
 }
 PIVOTS = ("base", "center", "keep")
 BUDGETS = ("auto", "manual", "off")
@@ -36,6 +36,7 @@ class Options:
     max_tris: int = 0                   # solo "manual"
     material: str = "ia"                # ia | madera | cuero | metal | none
     tex_size: int = 1024
+    smooth: int = 2                     # pasadas de suavizado que conserva el volumen (0 = ninguna); quita la grumosidad de la IA
     drop_islands: float = 0.01          # se descartan fragmentos con menos de este % de las caras del mayor
     color: tuple = None                 # color base opcional para los materiales procedurales
 
@@ -51,6 +52,8 @@ class Options:
         if self.budget == "manual":
             if self.max_tris <= 0 or self.min_tris < 0 or self.min_tris > self.max_tris:
                 raise PFError("presupuesto manual: hace falta 0 <= minimo <= maximo y maximo > 0")
+        if not 0 <= self.smooth <= 10:
+            raise PFError("suavizado: de 0 a 10 pasadas")
         if self.tex_size not in (128, 256, 512, 1024, 2048):
             raise PFError("tamaño de textura no valido: %s" % self.tex_size)
         return self
@@ -163,6 +166,30 @@ def clean(obj, drop_islands=0.01):
             "fragment_faces": dropped, "loose": len(loose_v) + len(loose_e)}
 
 
+def smooth(obj, iterations=2, lam=0.5, mu=-0.53):
+    """Suavizado de Taubin (alterna encoger y expandir): quita la grumosidad sin reducir el volumen."""
+    mesh = obj.data
+    n, ne = len(mesh.vertices), len(mesh.edges)
+    if iterations <= 0 or n == 0 or ne == 0:
+        return
+    co = np.empty(n * 3, np.float32)
+    mesh.vertices.foreach_get("co", co)
+    co = co.reshape(n, 3).astype(np.float64)
+    ev = np.empty(ne * 2, np.int32)
+    mesh.edges.foreach_get("vertices", ev)
+    ev = ev.reshape(-1, 2)
+    deg = np.bincount(ev.ravel(), minlength=n).astype(np.float64)
+    deg[deg == 0] = 1.0
+    for _ in range(iterations):
+        for factor in (lam, mu):
+            acc = np.zeros_like(co)
+            np.add.at(acc, ev[:, 0], co[ev[:, 1]])
+            np.add.at(acc, ev[:, 1], co[ev[:, 0]])
+            co += factor * (acc / deg[:, None] - co)
+    mesh.vertices.foreach_set("co", co.astype(np.float32).ravel())
+    mesh.update()
+
+
 # --------------------------------------------------------------------------------------------------------------
 # escala y pivote
 # --------------------------------------------------------------------------------------------------------------
@@ -237,6 +264,7 @@ def process(path, name, opts=None):
     try:
         raw_tris = meshutil.tri_count(obj.data)
         stats = clean(obj, opts.drop_islands)
+        smooth(obj, opts.smooth)
         height = opts.height or CATEGORIES[opts.category][0] or 0.0
         scale, dims = normalize(obj, height, opts.pivot)
         before, after, warn = apply_budget(obj, opts)

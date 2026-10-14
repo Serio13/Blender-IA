@@ -2,7 +2,7 @@
 
 ## A. Solo instalar el add-on (lo mínimo)
 
-1. Abre en el navegador: `https://github.com/Serio13/Blender-IA/blob/claude/gifted-lamport-jkmw6u/releases/pirate_prop_forge-0.2.6.zip`
+1. Abre en el navegador: `https://github.com/Serio13/Blender-IA/blob/claude/gifted-lamport-jkmw6u/releases/pirate_prop_forge-0.2.7.zip`
    y pulsa **Download raw file** (icono ⬇). Se guarda en *Descargas*. **No lo descomprimas.**
 2. En Blender 5.2: *Edit → Preferences → Get Extensions*. Si pregunta por acceso a Internet, puedes decir
    que no: no hace falta.
@@ -58,10 +58,10 @@ tienes instalado en Blender**. Hay que reinstalarlo:
 1. En GitHub Desktop comprueba arriba que **Current Branch** es `claude/gifted-lamport-jkmw6u` (si pone `main`,
    estás en la rama equivocada y no verás nada nuevo). Pulsa **Fetch origin** y luego **Pull origin**.
 2. En la carpeta del repositorio (por ejemplo `D:\Proyectos\Blender-IA`) abre `releases\` y localiza el `.zip`
-   con la versión más alta (ahora `pirate_prop_forge-0.2.6.zip`).
+   con la versión más alta (ahora `pirate_prop_forge-0.2.7.zip`).
 3. Blender → *Edit → Preferences → Get Extensions* → busca **Pirate Prop Forge** → menú **▾** → **Remove**.
 4. Menú **▾** de arriba a la derecha → **Install from Disk…** → elige ese `.zip`.
-5. **Comprueba la versión:** en la vista 3D, **N → Prop Forge**: la primera línea dice `Version 0.2.6`.
+5. **Comprueba la versión:** en la vista 3D, **N → Prop Forge**: la primera línea dice `Version 0.2.7`.
    Si pone otra, sigue instalada la antigua: repite el paso 3.
 6. Con objetos seleccionados, pulsa **Revisar seleccion**: te dice qué texturas reconoce el plugin de cada asset
    (por ejemplo `BaseMap 2048, Normal 2048, Metallic 2048, Roughness 2048`). Si dice `SIN TEXTURAS` o `FALTA`,

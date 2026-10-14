@@ -120,7 +120,12 @@ class PF_PT_ai(bpy.types.Panel):
             lay.label(text="GPU %d C" % st.gpu["temp"] if st.temp is None else "GPU %d C" % st.temp, icon="LIGHT_SUN")
 
         col = lay.column(align=True)
-        col.prop(pf, "ai_image")
+        col.row().prop(pf, "ai_source", expand=True)
+        if pf.ai_source == "TEXT":
+            col.prop(pf, "ai_prompt")
+            col.prop(pf, "ai_seed")
+        else:
+            col.prop(pf, "ai_image")
         col.prop(pf, "ai_name")
         col.prop(pf, "ai_backend")
         meta = licenses.get(pf.ai_backend)
@@ -137,6 +142,7 @@ class PF_PT_ai(bpy.types.Panel):
         c.prop(pf, "ai_category")
         c.prop(pf, "ai_height")
         c.prop(pf, "ai_pivot")
+        c.prop(pf, "ai_smooth")
         c.prop(pf, "ai_budget")
         if pf.ai_budget == "manual":
             r = c.row(align=True)
@@ -161,7 +167,7 @@ class PF_PT_ai(bpy.types.Panel):
                 draw_result(lay, tail, max_lines=5)
             lay.operator("pf.ai_cancel", icon="CANCEL")
         elif st.cooldown_left() > 0 and running:
-            total = max(5.0, (prefs.cooldown_seconds if prefs else 10.0))
+            total = max(5.0, getattr(prefs, "cooldown_seconds", 10.0))
             _progress(lay, max(0.0, min(1.0, 1.0 - st.cooldown_left() / total)),
                       "Enfriando GPU: %d s%s" % (st.cooldown_left() + 0.99, " (%d C)" % st.temp if st.temp else ""))
         row = lay.row()
@@ -173,6 +179,13 @@ class PF_PT_ai(bpy.types.Panel):
         if st.message and st.phase != "error":
             draw_result(lay, st.message)
 
+        if pf.ai_last_image:
+            ib = lay.box()
+            ib.label(text="Imagen creada por el texto")
+            icon = _thumb(pf.ai_last_image)
+            if icon:
+                ib.template_icon(icon_value=icon, scale=7)
+            ib.operator("pf.ai_use_image", icon="IMAGE_DATA")
         sub = lay.box()
         sub.label(text="Sin IA: normalizar una malla")
         sub.prop(pf, "ai_mesh")
@@ -182,6 +195,36 @@ class PF_PT_ai(bpy.types.Panel):
         row.operator("pf.ai_open_log", icon="TEXT")
         if st.doctor_text:
             draw_result(lay, st.doctor_text, max_lines=24)
+
+
+_previews = {"coll": None, "loaded": {}}
+
+
+def _thumb(path):
+    """Icono de miniatura de la imagen creada (None si no se puede cargar)."""
+    try:
+        import bpy.utils.previews as previews
+        if _previews["coll"] is None:
+            _previews["coll"] = previews.new()
+        coll = _previews["coll"]
+        key = path
+        import os
+        stamp = os.path.getmtime(path)
+        if key not in coll or _previews["loaded"].get(key) != stamp:
+            if key in coll:
+                del coll[key]
+            coll.load(key, path, "IMAGE")
+            _previews["loaded"][key] = stamp
+        return coll[key].icon_id
+    except Exception:                          # noqa: BLE001
+        return None
+
+
+def free_previews():
+    if _previews["coll"] is not None:
+        import bpy.utils.previews as previews
+        previews.remove(_previews["coll"])
+    _previews["coll"], _previews["loaded"] = None, {}
 
 
 def _progress(layout, factor, text):
